@@ -37,6 +37,11 @@ try:
 except ImportError:
     configuration_helpers = None
 
+try:
+    from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+except ImportError:
+    configuration_helpers = None
+
 logger = getLogger(__name__)  # pylint: disable=invalid-name
 
 mark_safe_lazy = lazy(mark_safe, six.text_type)  # pylint: disable=invalid-name
@@ -198,7 +203,6 @@ class EnterpriseCustomer(TimeStampedModel):
             course_run_key (str): The course run id for the course to be displayed.
         Returns:
             (str): Enterprise landing page url.
-
         """
         if configuration_helpers is None:
             raise NotConnectedToOpenEdX(
