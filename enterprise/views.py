@@ -72,10 +72,11 @@ from enterprise.utils import (
     get_enterprise_customer_user,
     is_consent_required_for_user,
 )
-from six.moves.urllib.parse import urlencode, urljoin  # pylint: disable=import-error
+from six.moves.urllib.parse import parse_qs, urlencode, urljoin, urlsplit, urlunsplit  # pylint: disable=import-error
 
 
 logger = getLogger(__name__)  # pylint: disable=invalid-name
+EDX_ENTERPRISE_SUPPORT_URL = 'https://support.edx.org/hc/en-us/sections/115002578128-Enterprise-Learner'
 LMS_DASHBOARD_URL = urljoin(settings.LMS_ROOT_URL, '/dashboard')
 LMS_START_PREMIUM_COURSE_FLOW_URL = urljoin(settings.LMS_ROOT_URL, '/verify_student/start-flow/{course_id}/')
 LMS_COURSEWARE_URL = urljoin(settings.LMS_ROOT_URL, '/courses/{course_id}/courseware')
@@ -412,7 +413,7 @@ class GrantDataSharingPermissions(View):
         """
         try:
             client = CourseApiClient()
-            client.get_course_details(course_id)
+            course_details = client.get_course_details(course_id)
         except HttpClientError:
             raise Http404
 
@@ -427,6 +428,41 @@ class GrantDataSharingPermissions(View):
             )
         if not consent_provided:
             failure_url = request.POST.get('failure_url') or reverse('dashboard')
+            enterprise_customer_name = request.POST.get('enterprise_customer_name')
+
+            # Check that if we need to add consent decline message from the
+            # provided querystring param `show_consent_decline_notification`.
+            scheme, netloc, path, query_string, fragment = urlsplit(failure_url)
+            url_params = parse_qs(query_string)
+            # pylint: disable=invalid-name
+            show_consent_decline_notification = url_params.pop('show_consent_decline_notification', None)
+
+            if show_consent_decline_notification:
+                messages.warning(
+                    request,
+                    _(
+                        '{strong_start}We could not enroll you in {em_start}{course_name}{em_end}.{strong_end} '
+                        '<span>If you have questions or concerns about sharing your data, please contact your learning '
+                        'manager at {enterprise_customer_name}, or contact {external_link_start} edX support'
+                        '{external_link_end}.{span_end}'
+                    ).format(
+                        course_name=course_details.get('name', course_id),
+                        em_start='<em>',
+                        em_end='</em>',
+                        enterprise_customer_name=enterprise_customer_name,
+                        external_link_start='<a href="{support_link}" target="_blank"><i class="fa fa-external-link" '
+                                            'aria-hidden="true">'.format(support_link=EDX_ENTERPRISE_SUPPORT_URL),
+                        external_link_end='</i></a>',
+                        span_start='<span>',
+                        span_end='</span>',
+                        strong_start='<strong>',
+                        strong_end='</strong>',
+                    )
+                )
+
+            failure_url = urlunsplit(
+                (scheme, netloc, path, urlencode(url_params, doseq=True), fragment),
+            )
             return redirect(failure_url)
         return redirect(request.POST.get('redirect_url', reverse('dashboard')))
 
@@ -467,19 +503,21 @@ class GrantDataSharingPermissions(View):
         platform_name = configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME)
         messages.success(
             request,
-            _('{span_start}Account created{span_end} Thank you for creating an account with {platform_name}.').format(
+            _(
+                '{strong_start}Account created{strong_end} Thank you for creating an account with {platform_name}.'
+            ).format(
                 platform_name=platform_name,
-                span_start='<span>',
-                span_end='</span>',
+                strong_start='<strong>',
+                strong_end='</strong>',
             )
         )
         if not user.is_active:
             messages.info(
                 request,
                 _(
-                    '{span_start}Activate your account{span_end} Check your inbox for an activation email. '
+                    '{strong_start}Activate your account{strong_end} Check your inbox for an activation email. '
                     'You will not be able to log back into your account until you have activated it.'
-                ).format(span_start='<span>', span_end='</span>')
+                ).format(strong_start='<strong>', strong_end='</strong>')
             )
 
         UserDataSharingConsentAudit.objects.update_or_create(
@@ -856,12 +894,19 @@ class CourseEnrollmentView(View):
                 ),
                 query_string=urlencode({'course_mode': selected_course_mode_name})
             )
+            failure_url = '{enterprise_course_enrollment_page_url}?{query_string}'.format(
+                enterprise_course_enrollment_page_url=reverse(
+                    'enterprise_course_enrollment_page', args=[enterprise_customer.uuid, course_id]
+                ),
+                query_string=urlencode({'show_consent_decline_notification': True})
+            )
             return redirect(
                 '{grant_data_sharing_url}?{params}'.format(
                     grant_data_sharing_url=reverse('grant_data_sharing_permissions'),
                     params=urlencode(
                         {
                             'next': next_url,
+                            'failure_url': failure_url,
                             'enterprise_id': enterprise_customer.uuid,
                             'course_id': course_id,
                             'enrollment_deferred': True,

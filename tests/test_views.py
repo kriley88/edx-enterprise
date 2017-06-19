@@ -23,6 +23,7 @@ from enterprise.views import (
     CONFIRMATION_ALERT_PROMPT,
     CONFIRMATION_ALERT_PROMPT_WARNING,
     CONSENT_REQUEST_PROMPT,
+    EDX_ENTERPRISE_SUPPORT_URL,
     LMS_COURSEWARE_URL,
     LMS_DASHBOARD_URL,
     LMS_START_PREMIUM_COURSE_FLOW_URL,
@@ -62,6 +63,13 @@ class TestGrantDataSharingPermissions(TestCase):
 
     url = reverse('grant_data_sharing_permissions')
 
+    def _get_messages_from_response_cookies(self, response):
+        """
+        Get django messages set in response cookies.
+        """
+        # pylint: disable=protected-access
+        return messages.storage.cookie.CookieStorage(response)._decode(response.cookies['messages'].value)
+
     def _assert_request_message(self, request_message, expected_message_tags, expected_message_text):
         """
         Verify the request message tags and text.
@@ -75,8 +83,7 @@ class TestGrantDataSharingPermissions(TestCase):
         enterprise depending on whether the learner has activated the linked
         account.
         """
-        # pylint: disable=protected-access
-        response_messages = messages.storage.cookie.CookieStorage(response)._decode(response.cookies['messages'].value)
+        response_messages = self._get_messages_from_response_cookies(response)
         if user_is_active:
             # Verify that request contains the expected success message when a
             # learner with activated account is linked with an enterprise
@@ -84,7 +91,7 @@ class TestGrantDataSharingPermissions(TestCase):
             self._assert_request_message(
                 response_messages[0],
                 'success',
-                '<span>Account created</span> Thank you for creating an account with edX.'
+                '<strong>Account created</strong> Thank you for creating an account with edX.'
             )
         else:
             # Verify that request contains the expected success message and an
@@ -94,12 +101,12 @@ class TestGrantDataSharingPermissions(TestCase):
             self._assert_request_message(
                 response_messages[0],
                 'success',
-                '<span>Account created</span> Thank you for creating an account with edX.'
+                '<strong>Account created</strong> Thank you for creating an account with edX.'
             )
             self._assert_request_message(
                 response_messages[1],
                 'info',
-                '<span>Activate your account</span> Check your inbox for an activation email. '
+                '<strong>Activate your account</strong> Check your inbox for an activation email. '
                 'You will not be able to log back into your account until you have activated it.'
             )
 
@@ -909,6 +916,73 @@ class TestGrantDataSharingPermissions(TestCase):
         assert resp.status_code == 302
         enrollment.refresh_from_db()
         assert enrollment.consent_granted is False
+
+    @mock.patch('enterprise.views.get_partial_pipeline')
+    @mock.patch('enterprise.views.get_complete_url')
+    @mock.patch('enterprise.tpa_pipeline.get_enterprise_customer_for_request')
+    @mock.patch('enterprise.views.get_real_social_auth_object')
+    @mock.patch('enterprise.views.get_enterprise_customer_for_request')
+    @mock.patch('enterprise.views.quarantine_session')
+    @mock.patch('enterprise.views.lift_quarantine')
+    @mock.patch('enterprise.views.configuration_helpers')
+    @mock.patch('enterprise.views.render', side_effect=fake_render)
+    @mock.patch('enterprise.views.CourseApiClient')
+    def test_post_course_specific_consent_not_provided_with_notification(
+            self,
+            course_api_client_mock,
+            *args  # pylint: disable=unused-argument
+    ):
+        # Verify that enterprise learner is redirected back to enterprise
+        # course enrollment page with consent decline warning message, if
+        # the learner declines data sharing consent.
+        self._login()
+        course_id = 'course-v1:edX+DemoX+Demo_Course'
+        course_name = 'edX Demo Course'
+        enterprise_customer = EnterpriseCustomerFactory(
+            name='Starfleet Academy',
+            enable_data_sharing_consent=True,
+            enforce_data_sharing_consent='at_enrollment',
+        )
+        enterprise_customer_user = EnterpriseCustomerUserFactory(
+            user_id=self.user.id,
+            enterprise_customer=enterprise_customer
+        )
+        enrollment = EnterpriseCourseEnrollment.objects.create(
+            enterprise_customer_user=enterprise_customer_user,
+            course_id=course_id
+        )
+        client = course_api_client_mock.return_value
+        client.get_course_details.return_value = {
+            'name': course_name
+        }
+        response = self.client.post(
+            self.url,
+            data={
+                'course_id': course_id,
+                'enterprise_customer_name': enterprise_customer.name,
+                'redirect_url': '/successful_enrollment',
+                'failure_url': '/failure_url?show_consent_decline_notification=true',
+            },
+        )
+        assert response.url.endswith('/failure_url')  # pylint: disable=no-member
+        assert response.status_code == 302
+        enrollment.refresh_from_db()
+        assert enrollment.consent_granted is False
+
+        # Verify that request contains the expected warning message when a
+        # learner decline the consent on enterprise course enrollment page.
+        expected_consent_decline_msg = '<strong>We could not enroll you in <em>{course_name}</em>.</strong> ' \
+                                       '<span>If you have questions or concerns about sharing your data, please ' \
+                                       'contact your learning manager at {enterprise_customer_name}, or contact ' \
+                                       '<a href="{edx_enterprise_support_link}" target="_blank"><i class="fa ' \
+                                       'fa-external-link" aria-hidden="true"> edX support</i></a>.</span>'.format(
+                                           course_name=course_name,
+                                           enterprise_customer_name=enterprise_customer.name,
+                                           edx_enterprise_support_link=EDX_ENTERPRISE_SUPPORT_URL,
+                                       )
+        response_messages = self._get_messages_from_response_cookies(response)
+        self.assertEqual(len(response_messages), 1)
+        self._assert_request_message(response_messages[0], 'warning', expected_consent_decline_msg)
 
     @mock.patch('enterprise.views.get_partial_pipeline')
     @mock.patch('enterprise.views.get_complete_url')
@@ -1793,12 +1867,19 @@ class TestCourseEnrollmentView(TestCase):
         consent_enrollment_url = '/enterprise/handle_consent_enrollment/{}/course/{}/?{}'.format(
             enterprise_id, course_id, urlencode({'course_mode': 'audit'})
         )
+        expected_failure_url = '{enterprise_course_enrollment_page_url}?{query_string}'.format(
+            enterprise_course_enrollment_page_url=reverse(
+                'enterprise_course_enrollment_page', args=[enterprise_customer.uuid, course_id]
+            ),
+            query_string=urlencode({'show_consent_decline_notification': True})
+        )
         self.assertRedirects(
             response,
             expected_url_format.format(
                 urlencode(
                     {
                         'next': consent_enrollment_url,
+                        'failure_url': expected_failure_url,
                         'enterprise_id': enterprise_id,
                         'course_id': course_id,
                         'enrollment_deferred': True,
