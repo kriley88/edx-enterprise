@@ -79,6 +79,10 @@
                         <input type="hidden" name="failure_url" value="{{ failure_url }}" />
                       {% endif %}
 
+                      {% if enterprise_customer_name %}
+                        <input type="hidden" name="enterprise_customer_name" value="{{ enterprise_customer_name }}" />
+                      {% endif %}
+
                       {% if enrollment_deferred %}
                         <input type="hidden" name="enrollment_deferred" value="true" />
                       {% endif %}
