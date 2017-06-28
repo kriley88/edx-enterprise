@@ -57,6 +57,7 @@ from enterprise.constants import CONFIRMATION_ALERT_PROMPT, CONFIRMATION_ALERT_P
 from enterprise.course_catalog_api import CourseCatalogApiClient
 from enterprise.decorators import enterprise_login_required, force_fresh_session
 from enterprise.lms_api import CourseApiClient, EnrollmentApiClient
+from enterprise.messages import populate_enterprise_course_enrollment_messages
 from enterprise.models import (
     EnterpriseCourseEnrollment,
     EnterpriseCustomer,
@@ -76,7 +77,6 @@ from six.moves.urllib.parse import parse_qs, urlencode, urljoin, urlsplit, urlun
 
 
 logger = getLogger(__name__)  # pylint: disable=invalid-name
-EDX_ENTERPRISE_SUPPORT_URL = 'https://support.edx.org/hc/en-us/sections/115002578128-Enterprise-Learner'
 LMS_DASHBOARD_URL = urljoin(settings.LMS_ROOT_URL, '/dashboard')
 LMS_START_PREMIUM_COURSE_FLOW_URL = urljoin(settings.LMS_ROOT_URL, '/verify_student/start-flow/{course_id}/')
 LMS_COURSEWARE_URL = urljoin(settings.LMS_ROOT_URL, '/courses/{course_id}/courseware')
@@ -413,7 +413,7 @@ class GrantDataSharingPermissions(View):
         """
         try:
             client = CourseApiClient()
-            course_details = client.get_course_details(course_id)
+            client.get_course_details(course_id)
         except HttpClientError:
             raise Http404
 
@@ -428,41 +428,6 @@ class GrantDataSharingPermissions(View):
             )
         if not consent_provided:
             failure_url = request.POST.get('failure_url') or reverse('dashboard')
-            enterprise_customer_name = request.POST.get('enterprise_customer_name')
-
-            # Check that if we need to add consent decline message from the
-            # provided querystring param `show_consent_decline_notification`.
-            scheme, netloc, path, query_string, fragment = urlsplit(failure_url)
-            url_params = parse_qs(query_string)
-            # pylint: disable=invalid-name
-            show_consent_decline_notification = url_params.pop('show_consent_decline_notification', None)
-
-            if show_consent_decline_notification:
-                messages.warning(
-                    request,
-                    _(
-                        '{strong_start}We could not enroll you in {em_start}{course_name}{em_end}.{strong_end} '
-                        '<span>If you have questions or concerns about sharing your data, please contact your learning '
-                        'manager at {enterprise_customer_name}, or contact {external_link_start} edX support'
-                        '{external_link_end}.{span_end}'
-                    ).format(
-                        course_name=course_details.get('name', course_id),
-                        em_start='<em>',
-                        em_end='</em>',
-                        enterprise_customer_name=enterprise_customer_name,
-                        external_link_start='<a href="{support_link}" target="_blank"><i class="fa fa-external-link" '
-                                            'aria-hidden="true">'.format(support_link=EDX_ENTERPRISE_SUPPORT_URL),
-                        external_link_end='</i></a>',
-                        span_start='<span>',
-                        span_end='</span>',
-                        strong_start='<strong>',
-                        strong_end='</strong>',
-                    )
-                )
-
-            failure_url = urlunsplit(
-                (scheme, netloc, path, urlencode(url_params, doseq=True), fragment),
-            )
             return redirect(failure_url)
         return redirect(request.POST.get('redirect_url', reverse('dashboard')))
 
@@ -760,7 +725,8 @@ class CourseEnrollmentView(View):
 
         return enterprise_customer, course_details, course_modes
 
-    def get_enterprise_course_enrollment_page(self, request, enterprise_customer, course_details, course_modes):
+    def get_enterprise_course_enrollment_page(self, request, enterprise_customer, course_details, course_modes,
+                                              enterprise_course_enrollment):
         """
         Render enterprise specific course track selection page.
         """
@@ -789,6 +755,13 @@ class CourseEnrollmentView(View):
         except (TypeError, ValidationError, ValueError):
             organization_logo = None
             organization_name = None
+
+        populate_enterprise_course_enrollment_messages(
+            request,
+            enterprise_customer,
+            course_details,
+            enterprise_course_enrollment
+        )
 
         context_data = {
             'page_title': self.context_data['page_title'],
@@ -855,6 +828,16 @@ class CourseEnrollmentView(View):
             user_id=request.user.id
         )
 
+        enterprise_course_enrollment = None
+        try:
+            enterprise_course_enrollment = EnterpriseCourseEnrollment.objects.get(
+                enterprise_customer_user__enterprise_customer=enterprise_customer,
+                enterprise_customer_user__user_id=request.user.id,
+                course_id=course_id
+            )
+        except EnterpriseCourseEnrollment.DoesNotExist:
+            pass
+
         selected_course_mode_name = request.POST.get('course_mode')
         selected_course_mode = None
         for course_mode in course_modes:
@@ -863,22 +846,24 @@ class CourseEnrollmentView(View):
                 break
 
         if not selected_course_mode:
-            return self.get_enterprise_course_enrollment_page(request, enterprise_customer, course, course_modes)
+            return self.get_enterprise_course_enrollment_page(request, enterprise_customer, course, course_modes,
+                                                              enterprise_course_enrollment)
 
         user_consent_needed = is_consent_required_for_user(enterprise_customer_user, course_id)
         if not selected_course_mode.get('premium') and not user_consent_needed:
             # For the audit course modes (audit, honor), where DSC is not
             # required, enroll the learner directly through enrollment API
             # client and redirect the learner to LMS courseware page.
-            with transaction.atomic():
-                # Create the Enterprise backend database records for this course
-                # enrollment.
-                EnterpriseCourseEnrollment.objects.get_or_create(
-                    enterprise_customer_user=enterprise_customer_user,
-                    course_id=course_id,
-                )
-                client = EnrollmentApiClient()
-                client.enroll_user_in_course(request.user.username, course_id, selected_course_mode_name)
+            if not enterprise_course_enrollment:
+                with transaction.atomic():
+                    # Create the Enterprise backend database records for this course
+                    # enrollment.
+                    EnterpriseCourseEnrollment.objects.get_or_create(
+                        enterprise_customer_user=enterprise_customer_user,
+                        course_id=course_id,
+                    )
+                    client = EnrollmentApiClient()
+                    client.enroll_user_in_course(request.user.username, course_id, selected_course_mode_name)
 
             return redirect(LMS_COURSEWARE_URL.format(course_id=course_id))
 
@@ -894,12 +879,7 @@ class CourseEnrollmentView(View):
                 ),
                 query_string=urlencode({'course_mode': selected_course_mode_name})
             )
-            failure_url = '{enterprise_course_enrollment_page_url}?{query_string}'.format(
-                enterprise_course_enrollment_page_url=reverse(
-                    'enterprise_course_enrollment_page', args=[enterprise_customer.uuid, course_id]
-                ),
-                query_string=urlencode({'show_consent_decline_notification': True})
-            )
+            failure_url = reverse('enterprise_course_enrollment_page', args=[enterprise_customer.uuid, course_id])
             return redirect(
                 '{grant_data_sharing_url}?{params}'.format(
                     grant_data_sharing_url=reverse('grant_data_sharing_permissions'),
@@ -954,14 +934,20 @@ class CourseEnrollmentView(View):
 
         enrollment_client = EnrollmentApiClient()
         enrolled_course = enrollment_client.get_course_enrollment(request.user.username, course_id)
-        if (enrolled_course is not None and
-                EnterpriseCourseEnrollment.objects.filter(
-                    enterprise_customer_user__enterprise_customer=enterprise_customer,
-                    enterprise_customer_user__user_id=request.user.id,
-                    course_id=course_id
-                ).exists()):
+        enterprise_course_enrollment = None
+        try:
+            enterprise_course_enrollment = EnterpriseCourseEnrollment.objects.get(
+                enterprise_customer_user__enterprise_customer=enterprise_customer,
+                enterprise_customer_user__user_id=request.user.id,
+                course_id=course_id
+            )
+        except EnterpriseCourseEnrollment.DoesNotExist:
+            pass
+
+        if enrolled_course and enterprise_course_enrollment:
             # The user is already enrolled in the course through the Enterprise Customer, so redirect to the course
             # info page.
             return redirect(LMS_COURSE_URL.format(course_id=course_id))
 
-        return self.get_enterprise_course_enrollment_page(request, enterprise_customer, course, modes)
+        return self.get_enterprise_course_enrollment_page(request, enterprise_customer, course, modes,
+                                                          enterprise_course_enrollment)
