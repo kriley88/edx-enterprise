@@ -414,7 +414,7 @@ class GrantDataSharingPermissions(View):
         """
         try:
             client = CourseApiClient()
-            client.get_course_details(course_id)
+            course_details = client.get_course_details(course_id)
         except HttpClientError:
             raise Http404
 
