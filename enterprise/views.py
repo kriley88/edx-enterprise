@@ -414,7 +414,7 @@ class GrantDataSharingPermissions(View):
         """
         try:
             client = CourseApiClient()
-            course_details = client.get_course_details(course_id)
+            client.get_course_details(course_id)
         except HttpClientError:
             raise Http404
 
@@ -428,12 +428,6 @@ class GrantDataSharingPermissions(View):
                 }
             )
         if not consent_provided:
-            enterprise_customer = get_enterprise_customer_for_user(request.user)
-            add_consent_declined_message(
-                request,
-                enterprise_customer,
-                course_details
-            )
             failure_url = request.POST.get('failure_url') or reverse('dashboard')
             return redirect(failure_url)
         return redirect(request.POST.get('redirect_url', reverse('dashboard')))
@@ -760,6 +754,9 @@ class CourseEnrollmentView(View):
         except (TypeError, ValidationError, ValueError):
             organization_logo = None
             organization_name = None
+
+        if enterprise_course_enrollment and not enterprise_course_enrollment.consent_granted:
+            add_consent_declined_message(request, enterprise_customer, course_details)
 
         context_data = {
             'page_title': self.context_data['page_title'],
