@@ -68,6 +68,7 @@ from enterprise.utils import (
     consent_necessary_for_course,
     enterprise_login_required,
     filter_audit_course_modes,
+    get_enterprise_customer_for_user,
     get_enterprise_customer_or_404,
     get_enterprise_customer_user,
     is_consent_required_for_user,
@@ -423,6 +424,7 @@ class GrantDataSharingPermissions(View):
                 }
             )
         if not consent_provided:
+            enterprise_customer = get_enterprise_customer_for_user(request.user)
             add_consent_declined_message(
                 request,
                 enterprise_customer,
