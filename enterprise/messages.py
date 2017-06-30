@@ -5,6 +5,7 @@ Utility functions for interfacing with the Django messages framework.
 from __future__ import absolute_import, unicode_literals
 
 from django.contrib import messages
+from django.utils.translation import ugettext as _
 
 try:
     from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
