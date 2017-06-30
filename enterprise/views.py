@@ -761,13 +761,6 @@ class CourseEnrollmentView(View):
             organization_logo = None
             organization_name = None
 
-        populate_enterprise_course_enrollment_messages(
-            request,
-            enterprise_customer,
-            course_details,
-            enterprise_course_enrollment
-        )
-
         context_data = {
             'page_title': self.context_data['page_title'],
             'LANGUAGE_CODE': get_language_from_request(request),
