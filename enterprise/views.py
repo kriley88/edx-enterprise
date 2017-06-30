@@ -804,7 +804,6 @@ class CourseEnrollmentView(View):
             user_id=request.user.id
         )
 
-        enterprise_course_enrollment = None
         try:
             enterprise_course_enrollment = EnterpriseCourseEnrollment.objects.get(
                 enterprise_customer_user__enterprise_customer=enterprise_customer,
@@ -812,7 +811,7 @@ class CourseEnrollmentView(View):
                 course_id=course_id
             )
         except EnterpriseCourseEnrollment.DoesNotExist:
-            pass
+            enterprise_course_enrollment = None
 
         selected_course_mode_name = request.POST.get('course_mode')
         selected_course_mode = None
@@ -831,15 +830,13 @@ class CourseEnrollmentView(View):
             # required, enroll the learner directly through enrollment API
             # client and redirect the learner to LMS courseware page.
             if not enterprise_course_enrollment:
-                with transaction.atomic():
-                    # Create the Enterprise backend database records for this course
-                    # enrollment.
-                    EnterpriseCourseEnrollment.objects.get_or_create(
-                        enterprise_customer_user=enterprise_customer_user,
-                        course_id=course_id,
-                    )
-                    client = EnrollmentApiClient()
-                    client.enroll_user_in_course(request.user.username, course_id, selected_course_mode_name)
+                # Create the Enterprise backend database records for this course enrollment.
+                EnterpriseCourseEnrollment.objects.create(
+                    enterprise_customer_user=enterprise_customer_user,
+                    course_id=course_id,
+                )
+            client = EnrollmentApiClient()
+            client.enroll_user_in_course(request.user.username, course_id, selected_course_mode_name)
 
             return redirect(LMS_COURSEWARE_URL.format(course_id=course_id))
         elif user_consent_needed:
