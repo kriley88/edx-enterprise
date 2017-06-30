@@ -894,14 +894,12 @@ class CourseEnrollmentView(View):
 
         enterprise_customer, course, modes = self.get_base_details(enterprise_uuid, course_id)
 
-        # Create a link between the user and the enterprise customer if it does not already exist.  Ensure that the link
-        # is saved to the database prior to invoking get_final_price() on the displayed course modes, so that the
-        # ecommerce service knows this user belongs to an enterprise customer.
-        with transaction.atomic():
-            EnterpriseCustomerUser.objects.get_or_create(
-                enterprise_customer=enterprise_customer,
-                user_id=request.user.id
-            )
+        # Create a link between the user and the enterprise customer if it
+        # does not already exist.
+        EnterpriseCustomerUser.objects.get_or_create(
+            enterprise_customer=enterprise_customer,
+            user_id=request.user.id
+        )
 
         enrollment_client = EnrollmentApiClient()
         enrolled_course = enrollment_client.get_course_enrollment(request.user.username, course_id)
