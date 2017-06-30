@@ -14,12 +14,6 @@ Change Log
 Unreleased
 ----------
 
-[0.36.5] - 2017-06-23
----------------------
-
-* Show consent decline notification on enterprise course enrollment page.
-
-
 [0.36.4] - 2017-06-21
 ---------------------
 
