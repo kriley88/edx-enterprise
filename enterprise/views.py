@@ -57,7 +57,7 @@ from enterprise.constants import CONFIRMATION_ALERT_PROMPT, CONFIRMATION_ALERT_P
 from enterprise.course_catalog_api import CourseCatalogApiClient
 from enterprise.decorators import enterprise_login_required, force_fresh_session
 from enterprise.lms_api import CourseApiClient, EnrollmentApiClient
-from enterprise.messages import populate_enterprise_course_enrollment_messages
+from enterprise.messages import add_consent_declined_message
 from enterprise.models import (
     EnterpriseCourseEnrollment,
     EnterpriseCustomer,
@@ -427,6 +427,11 @@ class GrantDataSharingPermissions(View):
                 }
             )
         if not consent_provided:
+            add_consent_declined_message(
+                request,
+                enterprise_customer,
+                course_details
+            )
             failure_url = request.POST.get('failure_url') or reverse('dashboard')
             return redirect(failure_url)
         return redirect(request.POST.get('redirect_url', reverse('dashboard')))

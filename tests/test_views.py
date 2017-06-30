@@ -39,7 +39,6 @@ from test_utils.factories import (
     UserFactory,
 )
 
-
 def fake_render(request, template, context):  # pylint: disable=unused-argument
     """
     Switch the request to use a template that does not depend on edx-platform.
