@@ -72,7 +72,7 @@ from enterprise.utils import (
     get_enterprise_customer_user,
     is_consent_required_for_user,
 )
-from six.moves.urllib.parse import parse_qs, urlencode, urljoin, urlsplit, urlunsplit  # pylint: disable=import-error
+from six.moves.urllib.parse import urlencode, urljoin  # pylint: disable=import-error
 
 
 logger = getLogger(__name__)  # pylint: disable=invalid-name
@@ -469,9 +469,7 @@ class GrantDataSharingPermissions(View):
         platform_name = configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME)
         messages.success(
             request,
-            _(
-                '{strong_start}Account created{strong_end} Thank you for creating an account with {platform_name}.'
-            ).format(
+            _('{strong_start}Account created{strong_end} Thank you for creating an account with {platform_name}.').format(
                 platform_name=platform_name,
                 strong_start='<strong>',
                 strong_end='</strong>',
