@@ -414,18 +414,18 @@ class GrantDataSharingPermissions(View):
         except HttpClientError:
             raise Http404
 
-        enrollment_deferred = request.POST.get('enrollment_deferred')
-        if enrollment_deferred is None:
-            EnterpriseCourseEnrollment.objects.update_or_create(
-                enterprise_customer_user__user_id=request.user.id,
-                course_id=course_id,
-                defaults={
-                    'consent_granted': consent_provided,
-                }
-            )
+        EnterpriseCourseEnrollment.objects.update_or_create(
+            enterprise_customer_user__user_id=request.user.id,
+            course_id=course_id,
+            defaults={
+                'consent_granted': consent_provided,
+            }
+        )
+
         if not consent_provided:
             failure_url = request.POST.get('failure_url') or reverse('dashboard')
             return redirect(failure_url)
+
         return redirect(request.POST.get('redirect_url', reverse('dashboard')))
 
     def post_account_consent(self, request, consent_provided):
