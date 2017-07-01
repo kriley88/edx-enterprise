@@ -823,7 +823,6 @@ class CourseEnrollmentView(View):
             user_id=request.user.id
         )
 
-        enterprise_course_enrollment = None
         try:
             enterprise_course_enrollment = EnterpriseCourseEnrollment.objects.get(
                 enterprise_customer_user__enterprise_customer=enterprise_customer,
@@ -831,7 +830,7 @@ class CourseEnrollmentView(View):
                 course_id=course_id
             )
         except EnterpriseCourseEnrollment.DoesNotExist:
-            pass
+            enterprise_course_enrollment = None
 
         selected_course_mode_name = request.POST.get('course_mode')
         selected_course_mode = None
@@ -850,15 +849,13 @@ class CourseEnrollmentView(View):
             # required, enroll the learner directly through enrollment API
             # client and redirect the learner to LMS courseware page.
             if not enterprise_course_enrollment:
-                with transaction.atomic():
-                    # Create the Enterprise backend database records for this course
-                    # enrollment.
-                    EnterpriseCourseEnrollment.objects.get_or_create(
-                        enterprise_customer_user=enterprise_customer_user,
-                        course_id=course_id,
-                    )
-                    client = EnrollmentApiClient()
-                    client.enroll_user_in_course(request.user.username, course_id, selected_course_mode_name)
+                # Create the Enterprise backend database records for this course enrollment.
+                EnterpriseCourseEnrollment.objects.create(
+                    enterprise_customer_user=enterprise_customer_user,
+                    course_id=course_id,
+                )
+            client = EnrollmentApiClient()
+            client.enroll_user_in_course(request.user.username, course_id, selected_course_mode_name)
 
             return redirect(LMS_COURSEWARE_URL.format(course_id=course_id))
 
@@ -918,18 +915,15 @@ class CourseEnrollmentView(View):
 
         enterprise_customer, course, modes = self.get_base_details(enterprise_uuid, course_id)
 
-        # Create a link between the user and the enterprise customer if it does not already exist.  Ensure that the link
-        # is saved to the database prior to invoking get_final_price() on the displayed course modes, so that the
-        # ecommerce service knows this user belongs to an enterprise customer.
-        with transaction.atomic():
-            EnterpriseCustomerUser.objects.get_or_create(
-                enterprise_customer=enterprise_customer,
-                user_id=request.user.id
-            )
+        # Create a link between the user and the enterprise customer if it
+        # does not already exist.
+        EnterpriseCustomerUser.objects.get_or_create(
+            enterprise_customer=enterprise_customer,
+            user_id=request.user.id
+        )
 
         enrollment_client = EnrollmentApiClient()
         enrolled_course = enrollment_client.get_course_enrollment(request.user.username, course_id)
-        enterprise_course_enrollment = None
         try:
             enterprise_course_enrollment = EnterpriseCourseEnrollment.objects.get(
                 enterprise_customer_user__enterprise_customer=enterprise_customer,
@@ -937,7 +931,7 @@ class CourseEnrollmentView(View):
                 course_id=course_id
             )
         except EnterpriseCourseEnrollment.DoesNotExist:
-            pass
+            enterprise_course_enrollment = None
 
         if enrolled_course and enterprise_course_enrollment:
             # The user is already enrolled in the course through the Enterprise Customer, so redirect to the course
