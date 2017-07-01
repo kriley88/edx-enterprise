@@ -418,8 +418,13 @@ class GrantDataSharingPermissions(View):
         except HttpClientError:
             raise Http404
 
+        enterprise_customer = get_enterprise_customer_for_user(request.user)
+        enterprise_customer_user = EnterpriseCustomerUser.objects.get_or_create(
+            enterprise_customer=enterprise_customer,
+            user_id=request.user.id
+        )
         EnterpriseCourseEnrollment.objects.update_or_create(
-            enterprise_customer_user__user_id=request.user.id,
+            enterprise_customer_user=enterprise_customer_user,
             course_id=course_id,
             defaults={
                 'consent_granted': consent_provided,
