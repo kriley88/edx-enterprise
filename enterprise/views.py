@@ -903,7 +903,6 @@ class CourseEnrollmentView(View):
 
         enrollment_client = EnrollmentApiClient()
         enrolled_course = enrollment_client.get_course_enrollment(request.user.username, course_id)
-        enterprise_course_enrollment = None
         try:
             enterprise_course_enrollment = EnterpriseCourseEnrollment.objects.get(
                 enterprise_customer_user__enterprise_customer=enterprise_customer,
@@ -911,7 +910,7 @@ class CourseEnrollmentView(View):
                 course_id=course_id
             )
         except EnterpriseCourseEnrollment.DoesNotExist:
-            pass
+            enterprise_course_enrollment = None
 
         if enrolled_course and enterprise_course_enrollment:
             # The user is already enrolled in the course through the Enterprise Customer, so redirect to the course
