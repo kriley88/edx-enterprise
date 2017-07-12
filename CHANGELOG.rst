@@ -14,6 +14,22 @@ Change Log
 Unreleased
 ----------
 
+[0.38.0] - 2017-07-11
+---------------------
+
+* Move to edx-platform release-focused testing
+* Add Django 1.11 support in Hawthorn testing branch
+
+[0.37.1] - 2017-07-11
+---------------------
+
+* Update Enterprise landing page styling/language
+
+[0.37.0] - 2017-07-06
+---------------------
+
+* Update enterprise catalog api endpoint so that api returns paginated catalogs.
+
 [0.36.11] - 2017-06-29
 ----------------------
 

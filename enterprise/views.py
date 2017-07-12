@@ -18,7 +18,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext as _
-from django.utils.translation import get_language_from_request
+from django.utils.translation import get_language_from_request, ungettext
 from django.views.generic import View
 
 try:
@@ -440,18 +440,20 @@ class GrantDataSharingPermissions(View):
         except HttpClientError:
             raise Http404
 
-        enterprise_customer = get_enterprise_customer_for_user(request.user)
-        enterprise_customer_user, __ = EnterpriseCustomerUser.objects.get_or_create(
-            enterprise_customer=enterprise_customer,
-            user_id=request.user.id
-        )
-        EnterpriseCourseEnrollment.objects.update_or_create(
-            enterprise_customer_user=enterprise_customer_user,
-            course_id=course_id,
-            defaults={
-                'consent_granted': consent_provided,
-            }
-        )
+        enrollment_deferred = request.POST.get('enrollment_deferred')
+        if enrollment_deferred is None:
+            enterprise_customer = get_enterprise_customer_for_user(request.user)
+            enterprise_customer_user, __ = EnterpriseCustomerUser.objects.get_or_create(
+                enterprise_customer=enterprise_customer,
+                user_id=request.user.id
+            )
+            EnterpriseCourseEnrollment.objects.update_or_create(
+                enterprise_customer_user=enterprise_customer_user,
+                course_id=course_id,
+                defaults={
+                    'consent_granted': consent_provided,
+                }
+            )
 
         if not consent_provided:
             failure_url = request.POST.get('failure_url') or reverse('dashboard')
@@ -496,7 +498,9 @@ class GrantDataSharingPermissions(View):
         platform_name = configuration_helpers.get_value('PLATFORM_NAME', settings.PLATFORM_NAME)
         messages.success(
             request,
-            _('{strong_start}Account created{strong_end} Thank you for creating an account with {platform_name}.').format(
+            _(
+                '{strong_start}Account created{strong_end} Thank you for creating an account with {platform_name}.'
+            ).format(
                 platform_name=platform_name,
                 strong_start='<strong>',
                 strong_end='</strong>',
@@ -659,7 +663,6 @@ class CourseEnrollmentView(View):
         'continue_link_text': _('Continue'),
         'level_text': _('Level'),
         'effort_text': _('Effort'),
-        'effort_hours_text': _('{hours} hours per week, per course'),
         'close_modal_button_text': _('Close'),
     }
 
@@ -684,7 +687,9 @@ class CourseEnrollmentView(View):
             price_details = endpoint.get(sku=[mode['sku']])
             price = price_details['total_incl_tax']
             if price != mode['min_price']:
-                return '${}'.format(price)
+                if int(price) == price:
+                    return '${}'.format(int(price))
+                return '${:0.2f}'.format(price)
         except HttpClientError:
             logger.error(
                 "Failed to get price details for course mode's SKU '{sku}' for username '{username}'".format(
@@ -766,9 +771,12 @@ class CourseEnrollmentView(View):
         except (AttributeError, ValueError):
             course_effort = ''
         else:
-            course_effort = self.context_data['effort_hours_text'].format(
-                hours=effort_hours
-            )
+            course_effort = ungettext(
+                '{hours} hour per week, per course',
+                '{hours} hours per week, per course',
+                effort_hours,
+            ).format(hours=effort_hours)
+
         course_run = CourseCatalogApiClient(request.user).get_course_run(course_details['course_id'])
 
         course_modes = self.set_final_prices(course_modes, request)
@@ -908,7 +916,6 @@ class CourseEnrollmentView(View):
                             'failure_url': failure_url,
                             'enterprise_id': enterprise_customer.uuid,
                             'course_id': course_id,
-                            'enrollment_deferred': True,
                         }
                     )
                 )
