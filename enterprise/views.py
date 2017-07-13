@@ -255,22 +255,29 @@ class GrantDataSharingPermissions(View):
         next_url = request.GET.get('next')
         failure_url = request.GET.get('failure_url')
 
+        if not consent_necessary_for_course(request.user, course_id):
+            raise Http404
+
         enrollment_deferred = request.GET.get('enrollment_deferred')
         if enrollment_deferred is None:
-            customer = get_object_or_404(
-                EnterpriseCourseEnrollment,
-                enterprise_customer_user__user_id=request.user.id,
-                course_id=course_id
-            ).enterprise_customer_user.enterprise_customer
+            # For non-deferred enrollments, check if we already collected
+            # consent and retrieve the EnterpriseCustomer using the existing
+            # EnterpriseCourseEnrollment.
+            try:
+                enrollment = EnterpriseCourseEnrollment.objects.get(
+                    enterprise_customer_user__user_id=user.id,
+                    course_id=course_id
+                )
+                if not enrollment.consent_needed:
+                    raise Http404
+                customer = enrollment.enterprise_customer_user.enterprise_customer
+            except EnterpriseCourseEnrollment.DoesNotExist:
+                pass
 
-            if not consent_necessary_for_course(request.user, course_id):
-                raise Http404
-        else:
-            # For deferred enrollment, expect to receive the EnterpriseCustomer from the GET parameters,
-            # which is used for display purposes.
-            enterprise_uuid = request.GET.get('enterprise_id')
-            if not enterprise_uuid:
-                raise Http404
+        # Deferred enrollments will pass the EnterpriseCustomer UUID
+        # as a request parameter. Use it to get the EnterpriseCustomer
+        # if we were not able to retrieve it above.
+        if not customer:
             customer = get_object_or_404(EnterpriseCustomer, uuid=enterprise_uuid)
 
         platform_name = configuration_helpers.get_value("PLATFORM_NAME", settings.PLATFORM_NAME)

@@ -861,58 +861,6 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
         enrollment.refresh_from_db()
         assert enrollment.consent_granted is consent_provided
 
-    @mock.patch('enterprise.views.get_partial_pipeline')
-    @mock.patch('enterprise.views.get_complete_url')
-    @mock.patch('enterprise.tpa_pipeline.get_enterprise_customer_for_request')
-    @mock.patch('enterprise.views.get_real_social_auth_object')
-    @mock.patch('enterprise.views.get_enterprise_customer_for_request')
-    @mock.patch('enterprise.views.quarantine_session')
-    @mock.patch('enterprise.views.lift_quarantine')
-    @mock.patch('enterprise.views.configuration_helpers')
-    @mock.patch('enterprise.views.render', side_effect=fake_render)
-    @mock.patch('enterprise.views.CourseApiClient')
-    def test_post_course_specific_consent_not_provided_with_notification(
-            self,
-            course_api_client_mock,
-            *args  # pylint: disable=unused-argument
-    ):
-        # Verify that enterprise learner is redirected back to enterprise
-        # course enrollment page with consent decline warning message, if
-        # the learner declines data sharing consent.
-        self._login()
-        course_id = 'course-v1:edX+DemoX+Demo_Course'
-        course_name = 'edX Demo Course'
-        enterprise_customer = EnterpriseCustomerFactory(
-            name='Starfleet Academy',
-            enable_data_sharing_consent=True,
-            enforce_data_sharing_consent='at_enrollment',
-        )
-        enterprise_customer_user = EnterpriseCustomerUserFactory(
-            user_id=self.user.id,
-            enterprise_customer=enterprise_customer
-        )
-        enrollment = EnterpriseCourseEnrollment.objects.create(
-            enterprise_customer_user=enterprise_customer_user,
-            course_id=course_id
-        )
-        client = course_api_client_mock.return_value
-        client.get_course_details.return_value = {
-            'name': course_name
-        }
-        response = self.client.post(
-            self.url,
-            data={
-                'course_id': course_id,
-                'enterprise_customer_name': enterprise_customer.name,
-                'redirect_url': '/successful_enrollment',
-                'failure_url': '/failure_url?show_consent_decline_notification=true',
-            },
-        )
-        assert response.url.endswith('/failure_url')  # pylint: disable=no-member
-        assert response.status_code == 302
-        enrollment.refresh_from_db()
-        assert enrollment.consent_granted is False
-
         # Verify that request contains the expected warning message when a
         # learner decline the consent on enterprise course enrollment page.
         expected_consent_decline_msg = '<strong>We could not enroll you in <em>{course_name}</em>.</strong> ' \
@@ -2000,7 +1948,6 @@ class TestCourseEnrollmentView(MessagesMixin, TestCase):
                         'failure_url': expected_failure_url,
                         'enterprise_id': enterprise_id,
                         'course_id': course_id,
-                        'enrollment_deferred': True,
                     }
                 )
             ),
