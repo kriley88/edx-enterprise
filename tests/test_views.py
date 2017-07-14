@@ -464,14 +464,16 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
     @mock.patch('enterprise.views.configuration_helpers')
     @mock.patch('enterprise.views.CourseApiClient')
     @ddt.data(
-        (False, False),
-        (True, True),
+        (False, False, True),
+        (False, True, False),
+        (True, True, False),
     )
     @ddt.unpack
     def test_get_course_specific_consent(
             self,
             enrollment_deferred,
             supply_customer_uuid,
+            existing_course_enrollment,
             course_api_client_mock,
             mock_config,
             *args
@@ -492,10 +494,11 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
             user_id=self.user.id,
             enterprise_customer=enterprise_customer
         )
-        EnterpriseCourseEnrollment.objects.create(
-            enterprise_customer_user=ecu,
-            course_id=course_id
-        )
+        if existing_course_enrollment:
+            EnterpriseCourseEnrollment.objects.create(
+                enterprise_customer_user=ecu,
+                course_id=course_id
+            )
         params = {
             'course_id': 'course-v1:edX+DemoX+Demo_Course',
             'next': 'https://google.com'
@@ -814,12 +817,15 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
     @mock.patch('enterprise.views.CourseApiClient')
     @mock.patch('enterprise.views.reverse')
     @ddt.data(
-        (True, '/successful_enrollment'),
-        (False, '/failure_url'),
+        (True, True, '/successful_enrollment'),
+        (False, True, '/successful_enrollment'),
+        (True, False, '/failure_url'),
+        (False, False, '/failure_url'),
     )
     @ddt.unpack
     def test_post_course_specific_consent(
             self,
+            enrollment_deferred,
             consent_provided,
             expected_redirect_url,
             reverse_mock,
@@ -851,6 +857,8 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
             'redirect_url': '/successful_enrollment',
             'failure_url': '/failure_url',
         }
+        if enrollment_deferred:
+            post_data['enrollment_deferred'] = True
         if consent_provided:
             post_data['data_sharing_consent'] = consent_provided
 
@@ -859,22 +867,8 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
         assert resp.url.endswith(expected_redirect_url)  # pylint: disable=no-member
         assert resp.status_code == 302
         enrollment.refresh_from_db()
-        assert enrollment.consent_granted is consent_provided
-
-        # Verify that request contains the expected warning message when a
-        # learner decline the consent on enterprise course enrollment page.
-        expected_consent_decline_msg = '<strong>We could not enroll you in <em>{course_name}</em>.</strong> ' \
-                                       '<span>If you have questions or concerns about sharing your data, please ' \
-                                       'contact your learning manager at {enterprise_customer_name}, or contact ' \
-                                       '<a href="{edx_enterprise_support_link}" target="_blank"><i class="fa ' \
-                                       'fa-external-link" aria-hidden="true"> edX support</i></a>.</span>'.format(
-                                           course_name=course_name,
-                                           enterprise_customer_name=enterprise_customer.name,
-                                           edx_enterprise_support_link=EDX_ENTERPRISE_SUPPORT_URL,
-                                       )
-        response_messages = self._get_messages_from_response_cookies(response)
-        self.assertEqual(len(response_messages), 1)
-        self._assert_request_message(response_messages[0], 'warning', expected_consent_decline_msg)
+        if not enrollment_deferred:
+            assert enrollment.consent_granted is consent_provided
 
     @mock.patch('enterprise.views.get_partial_pipeline')
     @mock.patch('enterprise.views.get_complete_url')

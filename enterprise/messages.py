@@ -4,7 +4,6 @@ Utility functions for interfacing with the Django messages framework.
 """
 from __future__ import absolute_import, unicode_literals
 
-from django.conf import settings
 from django.contrib import messages
 from django.utils.translation import ugettext as _
 
@@ -35,7 +34,7 @@ def add_consent_declined_message(request, enterprise_customer, course_details):
             em_end='</em>',
             enterprise_customer_name=enterprise_customer.name,
             link_start='<a href="{support_link}" target="_blank">'.format(
-                support_link=configuration_helpers.get_value('ENTERPRISE_SUPPORT_URL', settings.ENTERPRISE_SUPPORT_URL)
+                support_link=configuration_helpers.get_value('ENTERPRISE_SUPPORT_URL')
             ),
             platform_name=configuration_helpers.get_value('PLATFORM_NAME'),
             link_end='</a>',

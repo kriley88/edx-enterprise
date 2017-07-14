@@ -67,7 +67,6 @@ from enterprise.models import (
 from enterprise.tpa_pipeline import active_provider_enforces_data_sharing, get_enterprise_customer_for_request
 from enterprise.utils import (
     NotConnectedToOpenEdX,
-    consent_necessary_for_course,
     filter_audit_course_modes,
     get_enterprise_customer_for_user,
     get_enterprise_customer_or_404,
@@ -238,8 +237,6 @@ class GrantDataSharingPermissions(View):
         about the specific course that's being set up.
 
         A 404 will be raised if any of the following conditions are met:
-            * Enrollment is not to be deferred, but there is no EnterpriseCourseEnrollment
-              associated with the current user.
             * Enrollment is not to be deferred and there's an EnterpriseCourseEnrollment
               associated with the current user, but the corresponding EnterpriseCustomer
               does not require course-level consent for this course.
@@ -259,25 +256,31 @@ class GrantDataSharingPermissions(View):
             raise Http404
 
         enrollment_deferred = request.GET.get('enrollment_deferred')
+        customer = None
         if enrollment_deferred is None:
-            # For non-deferred enrollments, check if we already collected
+            # For non-deferred enrollments, check if we need to collect
             # consent and retrieve the EnterpriseCustomer using the existing
             # EnterpriseCourseEnrollment.
             try:
                 enrollment = EnterpriseCourseEnrollment.objects.get(
-                    enterprise_customer_user__user_id=user.id,
+                    enterprise_customer_user__user_id=request.user.id,
                     course_id=course_id
                 )
                 if not enrollment.consent_needed:
                     raise Http404
                 customer = enrollment.enterprise_customer_user.enterprise_customer
             except EnterpriseCourseEnrollment.DoesNotExist:
+                # Enrollment is not deferred, but we don't have
+                # an EnterpriseCourseEnrollment yet, so we carry
+                # and attempt to retrieve the EnterpriseCustomer
+                # using the enterprise_id request param below.
                 pass
 
         # Deferred enrollments will pass the EnterpriseCustomer UUID
         # as a request parameter. Use it to get the EnterpriseCustomer
         # if we were not able to retrieve it above.
         if not customer:
+            enterprise_uuid = request.GET.get('enterprise_id')
             customer = get_object_or_404(EnterpriseCustomer, uuid=enterprise_uuid)
 
         platform_name = configuration_helpers.get_value("PLATFORM_NAME", settings.PLATFORM_NAME)
