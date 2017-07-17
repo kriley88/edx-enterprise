@@ -78,8 +78,13 @@ class EnterpriseCustomerViewSet(EnterpriseReadOnlyModelViewSet):
 
         # Make sure there is a catalog associated with the enterprise
         if not enterprise_customer.catalog:
-            error_message = ("No catalog is associated with the given enterprise from endpoint "
-                             "'/enterprise-customer/{}/courses'.".format(pk))
+            error_message = (
+                "No catalog is associated with Enterprise {enterprise_name} from endpoint "
+                "'/enterprise-customer/{enterprise_id}/courses'.".format(
+                    enterprise_name=enterprise_customer.name,
+                    enterprise_id=pk
+                )
+            )
             logger.error(error_message)
             raise NotFound("The resource you are looking for does not exist: " + error_message)
 
@@ -88,18 +93,31 @@ class EnterpriseCustomerViewSet(EnterpriseReadOnlyModelViewSet):
                 enterprise_customer=enterprise_customer,
                 user_id=request.user.id,
         ).exists():
-            error_message = ("User '{}' is not associated with enterprise from endpoint "
-                             "'/enterprise-customer/{}/courses'.".format(request.user.username, pk))
+            error_message = (
+                "User '{username}' is not associated with Enterprise {enterprise_name} from endpoint "
+                "'/enterprise-customer/{enterprise_id}/courses'.".format(
+                    username=request.user.username,
+                    enterprise_name=enterprise_customer.name,
+                    enterprise_id=pk
+                )
+            )
             logger.error(error_message)
             raise PermissionDenied("The user does not have permission to access this resource: " + error_message)
 
+        # We have handled potential error cases and are now ready to call out to the Catalog API.
         catalog_api = CourseCatalogApiClient(request.user)
         courses = catalog_api.get_catalog_courses(enterprise_customer.catalog)
 
-        # An empty response means that there was a problem fetching data from catalog API.
+        # An empty response means that there was a problem fetching data from Catalog API, since
+        # a Catalog with no courses has a non empty response indicating that there are no courses.
         if not courses:
-            error_message = ("Unable to fetch API response for catalog courses from endpoint "
-                             "'/enterprise-customer/{}/courses'.".format(pk))
+            error_message = (
+                "Unable to fetch API response for catalog courses for Enterprise {enterprise_name} from endpoint "
+                "'/enterprise-customer/{enterprise_id}/courses'.".format(
+                    enterprise_name=enterprise_customer.name,
+                    enterprise_id=pk
+                )
+            )
             logger.error(error_message)
             raise NotFound("The resource you are looking for does not exist: " + error_message)
 
