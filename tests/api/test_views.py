@@ -631,7 +631,7 @@ class TestEnterpriseAPIViews(APITest):
             {'detail': (
                 "The resource you are looking for does not exist: "
                 "No catalog is associated with Enterprise Pied Piper from endpoint "
-                "'/enterprise-customer/"+DEFAULT_ENTERPRISE_UUID+"/courses'."
+                "'/enterprise/api/v1/enterprise-customer/"+DEFAULT_ENTERPRISE_UUID+"/courses/'."
             )}
         ),
         (
@@ -643,7 +643,7 @@ class TestEnterpriseAPIViews(APITest):
             {'detail': (
                 "The user does not have permission to access this resource: "
                 "User 'api_worker' is not associated with Enterprise Pied Piper from endpoint "
-                "'/enterprise-customer/"+DEFAULT_ENTERPRISE_UUID+"/courses'."
+                "'/enterprise/api/v1/enterprise-customer/"+DEFAULT_ENTERPRISE_UUID+"/courses/'."
             )}
         ),
         (
@@ -655,7 +655,7 @@ class TestEnterpriseAPIViews(APITest):
             {'detail': (
                 "The resource you are looking for does not exist: "
                 "Unable to fetch API response for catalog courses for Enterprise Pied Piper from endpoint "
-                "'/enterprise-customer/"+DEFAULT_ENTERPRISE_UUID+"/courses'."
+                "'/enterprise/api/v1/enterprise-customer/"+DEFAULT_ENTERPRISE_UUID+"/courses/'."
             )},
         ),
         (
