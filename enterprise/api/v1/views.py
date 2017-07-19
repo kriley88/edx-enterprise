@@ -65,7 +65,7 @@ class EnterpriseCustomerViewSet(EnterpriseReadOnlyModelViewSet):
     ordering_fields = FIELDS
 
     @detail_route()
-    def courses(self, request, pk=None):  # pylint: disable=invalid-name
+    def courses(self, request, pk=None):  # pylint: disable=invalid-name,unused-argument
         """
         Retrieve the list of courses contained within the catalog linked to this enterprise.
 
@@ -79,10 +79,9 @@ class EnterpriseCustomerViewSet(EnterpriseReadOnlyModelViewSet):
         # Make sure there is a catalog associated with the enterprise
         if not enterprise_customer.catalog:
             error_message = (
-                "No catalog is associated with Enterprise {enterprise_name} from endpoint "
-                "'/enterprise-customer/{enterprise_id}/courses'.".format(
+                "No catalog is associated with Enterprise {enterprise_name} from endpoint '{path}'.".format(
                     enterprise_name=enterprise_customer.name,
-                    enterprise_id=pk
+                    path=request.get_full_path()
                 )
             )
             logger.error(error_message)
@@ -94,11 +93,10 @@ class EnterpriseCustomerViewSet(EnterpriseReadOnlyModelViewSet):
                 user_id=request.user.id,
         ).exists():
             error_message = (
-                "User '{username}' is not associated with Enterprise {enterprise_name} from endpoint "
-                "'/enterprise-customer/{enterprise_id}/courses'.".format(
+                "User '{username}' is not associated with Enterprise {enterprise_name} from endpoint '{path}'.".format(
                     username=request.user.username,
                     enterprise_name=enterprise_customer.name,
-                    enterprise_id=pk
+                    path=request.get_full_path()
                 )
             )
             logger.error(error_message)
@@ -113,9 +111,9 @@ class EnterpriseCustomerViewSet(EnterpriseReadOnlyModelViewSet):
         if not courses:
             error_message = (
                 "Unable to fetch API response for catalog courses for Enterprise {enterprise_name} from endpoint "
-                "'/enterprise-customer/{enterprise_id}/courses'.".format(
+                "'{path}'.".format(
                     enterprise_name=enterprise_customer.name,
-                    enterprise_id=pk
+                    path=request.get_full_path()
                 )
             )
             logger.error(error_message)

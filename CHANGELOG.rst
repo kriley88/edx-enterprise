@@ -14,6 +14,23 @@ Change Log
 Unreleased
 ----------
 
+[0.38.5] - 2017-07-19
+---------------------
+
+* Add page_size in querystring and data mapping template to fix "next" and "previous" urls in API response.
+
+
+[0.38.4] - 2017-07-18
+---------------------
+
+* Fix DSC Policy Language Needs
+
+
+[0.38.3] - 2017-07-14
+---------------------
+
+* Fix dependency installation process in setup.py.
+
 [0.38.2] - 2017-07-14
 ---------------------
 
