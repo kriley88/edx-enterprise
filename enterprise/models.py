@@ -28,6 +28,7 @@ from model_utils.models import TimeStampedModel
 
 from enterprise import utils
 from enterprise.api_client.lms import EnrollmentApiClient, ThirdPartyAuthApiClient, enroll_user_in_course_locally
+from enterprise.api_client.discovery import CourseCatalogApiClient
 from enterprise.utils import NotConnectedToOpenEdX
 from enterprise.validators import validate_image_extension, validate_image_size
 from six.moves.urllib.parse import urljoin  # pylint: disable=import-error,ungrouped-imports
@@ -221,6 +222,13 @@ class EnterpriseCustomer(TimeStampedModel):
                 kwargs={'enterprise_uuid': self.uuid, 'course_id': course_run_key}
             )
         )
+
+    def catalog_contains_course_run(self, request_user, course_run_id):
+        if not self.catalog:
+            return False
+        else:
+            client = CourseCatalogApiClient(request_user)
+            return client.course_in_catalog(self.catalog, course_run_id)
 
 
 class EnterpriseCustomerUserManager(models.Manager):

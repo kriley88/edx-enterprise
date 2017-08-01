@@ -91,6 +91,8 @@ class DataSharingConsentView(APIView):
         "enterprise customer uuid '{enterprise_customer_uuid}'."
     )
 
+    QUERY_PARAM_METHODS = {'GET', 'DELETE'}
+
     def get_required_query_params(self, request):
         """
         Gets ``username``, ``course_id``, and ``enterprise_customer_uuid``,
@@ -100,7 +102,7 @@ class DataSharingConsentView(APIView):
         :return: The ``username``, ``course_id``, and ``enterprise_customer_uuid`` from the request.
 
         """
-        if request.method == 'GET':
+        if request.method in self.QUERY_PARAM_METHODS:
             username = request.query_params.get(self.REQUIRED_PARAM_USERNAME, '')
             course_id = request.query_params.get(self.REQUIRED_PARAM_COURSE_ID, '')
             enterprise_customer_uuid = request.query_params.get(self.REQUIRED_PARAM_ENTERPRISE_CUSTOMER)
@@ -157,6 +159,11 @@ class DataSharingConsentView(APIView):
         exists = consent_exists(user_id, course_id, enterprise_customer_uuid)
         provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
         required = consent_required(user_id, course_id, enterprise_customer_uuid)
+        enterprise_customer = get_enterprise_customer(enterprise_customer_uuid)
+        if not enterprise_customer.catalog_contains_course_run(request.user, course_id):
+            # Only mark consent as required if it's in the Enterprise-linked
+            # course catalog; not otherwise.
+            required = False
         return Response({
             self.REQUIRED_PARAM_USERNAME: username,
             self.REQUIRED_PARAM_COURSE_ID: course_id,
@@ -192,14 +199,23 @@ class DataSharingConsentView(APIView):
             return Response({'error': str(invalid_request)}, status=HTTP_400_BAD_REQUEST)
 
         user_id = get_user_id(username)
-        self.set_consent_state(True, user_id, course_id, enterprise_customer_uuid)
-        provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
         required = consent_required(user_id, course_id, enterprise_customer_uuid)
+        exists = consent_exists(user_id, course_id, enterprise_customer_uuid)
+
+        if not enterprise_customer.catalog_contains_course_run(request.user, course_id):
+            required = False
+
+        if required:
+            self.set_consent_state(True, user_id, course_id, enterprise_customer_uuid)
+            provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
+            required = consent_required(user_id, course_id, enterprise_customer_uuid)
+            exists = True
+
         return Response({
             self.REQUIRED_PARAM_USERNAME: username,
             self.REQUIRED_PARAM_COURSE_ID: course_id,
             self.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: enterprise_customer_uuid,
-            self.CONSENT_EXISTS: True,
+            self.CONSENT_EXISTS: exists,
             self.CONSENT_GRANTED: provided,
             self.CONSENT_REQUIRED: required
         })
@@ -233,6 +249,8 @@ class DataSharingConsentView(APIView):
         self.set_consent_state(False, user_id, course_id, enterprise_customer_uuid)
         provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
         required = consent_required(user_id, course_id, enterprise_customer_uuid)
+        if not enterprise_customer.catalog_contains_course_run(request.user, course_id):
+            required = False
         return Response({
             self.REQUIRED_PARAM_USERNAME: username,
             self.REQUIRED_PARAM_COURSE_ID: course_id,

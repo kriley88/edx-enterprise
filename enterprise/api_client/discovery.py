@@ -244,6 +244,10 @@ class CourseCatalogApiClient(object):
 
         return available_course_modes
 
+    def course_in_catalog(self, catalog_id, course_run_id):
+        resp = self.client.catalogs(catalog_id).contains.get(course_run_id=course_run_id)
+        return resp['courses'].get(course_run_id, False)
+
     def _load_data(self, resource, default=DEFAULT_VALUE_SAFEGUARD, **kwargs):
         """
         Load data from API client.
