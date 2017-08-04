@@ -177,12 +177,13 @@ class DataSharingConsentView(APIView):
         user_id = get_user_id(username)
         exists = consent_exists(user_id, course_id, enterprise_customer_uuid)
         provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
-        required = consent_required(user_id, course_id, enterprise_customer_uuid)
         enterprise_customer = get_enterprise_customer(enterprise_customer_uuid)
         if enterprise_customer and not enterprise_customer.catalog_contains_course_run(request.user, course_id):
             # Only mark consent as required if it's in the Enterprise-linked
             # course catalog; not otherwise.
             required = False
+        else:
+            required = consent_required(user_id, course_id, enterprise_customer_uuid)
         return Response({
             self.REQUIRED_PARAM_USERNAME: username,
             self.REQUIRED_PARAM_COURSE_ID: course_id,
@@ -220,7 +221,6 @@ class DataSharingConsentView(APIView):
 
         # Determine whether consent is needed and if it's been provided already.
         user_id = get_user_id(username)
-        required = consent_required(user_id, course_id, enterprise_customer_uuid)
         exists = consent_exists(user_id, course_id, enterprise_customer_uuid)
         provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
 
@@ -229,6 +229,8 @@ class DataSharingConsentView(APIView):
         enterprise_customer = get_enterprise_customer(enterprise_customer_uuid)
         if enterprise_customer and not enterprise_customer.catalog_contains_course_run(request.user, course_id):
             required = False
+        else:
+            required = consent_required(user_id, course_id, enterprise_customer_uuid)
 
         if required:
             # If and only if the given EnterpriseCustomer requires data sharing consent
@@ -278,10 +280,12 @@ class DataSharingConsentView(APIView):
         user_id = get_user_id(username)
         self.set_consent_state(False, user_id, course_id, enterprise_customer_uuid)
         provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
-        required = consent_required(user_id, course_id, enterprise_customer_uuid)
         enterprise_customer = get_enterprise_customer(enterprise_customer_uuid)
         if enterprise_customer and not enterprise_customer.catalog_contains_course_run(request.user, course_id):
             required = False
+        else:
+            required = consent_required(user_id, course_id, enterprise_customer_uuid)
+
         return Response({
             self.REQUIRED_PARAM_USERNAME: username,
             self.REQUIRED_PARAM_COURSE_ID: course_id,
