@@ -169,7 +169,7 @@ class DataSharingConsentView(APIView):
 
         """
         try:
-            # Ensure that we got the require explicit parameters in the API
+            # Ensure that we got the required explicit parameters in the API
             username, course_id, enterprise_customer_uuid = self.get_required_query_params(request)
         except ConsentAPIRequestError as invalid_request:
             return Response({'error': str(invalid_request)}, status=HTTP_400_BAD_REQUEST)
@@ -214,7 +214,7 @@ class DataSharingConsentView(APIView):
 
         """
         try:
-            # Ensure that we got the require explicit parameters in the API
+            # Ensure that we got the required explicit parameters in the API
             username, course_id, enterprise_customer_uuid = self.get_required_query_params(request)
         except ConsentAPIRequestError as invalid_request:
             return Response({'error': str(invalid_request)}, status=HTTP_400_BAD_REQUEST)
@@ -282,6 +282,8 @@ class DataSharingConsentView(APIView):
         provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
         enterprise_customer = get_enterprise_customer(enterprise_customer_uuid)
         if enterprise_customer and not enterprise_customer.catalog_contains_course_run(request.user, course_id):
+            # Only mark consent as required if it's in the Enterprise-linked
+            # course catalog; not otherwise.
             required = False
         else:
             required = consent_required(user_id, course_id, enterprise_customer_uuid)

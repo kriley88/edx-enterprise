@@ -35,10 +35,10 @@ class TestConsentAPIViews(APITest, ConsentMixin):
     path = settings.TEST_SERVER + reverse(endpoint_name)
 
     def setUp(self):
-        client_class = mock.patch('enterprise.models.CourseCatalogApiClient')
-        self.cd_client = client_class.start().return_value
-        self.cd_client.course_in_catalog.return_value = True
-        self.addCleanup(client_class.stop)
+        discovery_client_class = mock.patch('enterprise.models.CourseCatalogApiClient')
+        self.discovery_client = discovery_client_class.start().return_value
+        self.discovery_client.course_in_catalog.return_value = True
+        self.addCleanup(discovery_client_class.stop)
         super(TestConsentAPIViews, self).setUp()
 
     def create_user(self, username=TEST_USERNAME, password=TEST_PASSWORD, **kwargs):
@@ -589,9 +589,8 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             expected_response_body,
             expected_status_code
     ):
-        self.cd_client.course_in_catalog.return_value = False
-        if factory:
-            create_items(factory, items)
+        self.discovery_client.course_in_catalog.return_value = False
+        create_items(factory, items)
         response = self.client.get(self.path, request_body)
         self._assert_expectations(response, expected_response_body, expected_status_code)
 
@@ -1017,9 +1016,8 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             expected_response_body,
             expected_status_code
     ):
-        self.cd_client.course_in_catalog.return_value = False
-        if factory:
-            create_items(factory, items)
+        self.discovery_client.course_in_catalog.return_value = False
+        create_items(factory, items)
         response = self.client.post(self.path, request_body)
         self._assert_expectations(response, expected_response_body, expected_status_code)
 
@@ -1426,7 +1424,7 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             expected_response_body,
             expected_status_code
     ):
-        self.cd_client.course_in_catalog.return_value = False
+        self.discovery_client.course_in_catalog.return_value = False
         if factory:
             create_items(factory, items)
         response = self.client.delete(self.path, request_body)

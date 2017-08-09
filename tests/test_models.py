@@ -277,9 +277,9 @@ class TestEnterpriseCustomer(unittest.TestCase):
     )
     @ddt.unpack
     @mock.patch('enterprise.models.CourseCatalogApiClient')
-    def test_course_in_catalog(self, received_course_id, expected_result, mock_catalog_api_class):
+    def test_catalog_contains_course_run(self, course_id, expected_result, mock_catalog_api_class):
         """
-        Test course_in_catalog method on the EnterpriseCustomer.
+        Test catalog_contains_course_run method on the EnterpriseCustomer.
         """
         def course_in_catalog(_catalog_id, course_id):
             """
@@ -292,13 +292,13 @@ class TestEnterpriseCustomer(unittest.TestCase):
 
         customer = EnterpriseCustomerFactory()
         user = UserFactory()
-        assert customer.catalog_contains_course_run(user, received_course_id) == expected_result
+        assert customer.catalog_contains_course_run(user, course_id) == expected_result
 
         mock_catalog_api_class.assert_called_once_with(user)
-        mock_catalog_api.course_in_catalog.assert_called_once_with(customer.catalog, received_course_id)
+        mock_catalog_api.course_in_catalog.assert_called_once_with(customer.catalog, course_id)
 
-        catalogless = EnterpriseCustomerFactory(catalog=None)
-        assert catalogless.catalog_contains_course_run(user, received_course_id) is False
+        catalogless_customer = EnterpriseCustomerFactory(catalog=None)
+        assert catalogless_customer.catalog_contains_course_run(user, course_id) is False
 
 
 @mark.django_db
