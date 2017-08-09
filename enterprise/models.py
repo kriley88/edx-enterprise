@@ -27,8 +27,8 @@ from django.utils.translation import ugettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from enterprise import utils
-from enterprise.api_client.lms import EnrollmentApiClient, ThirdPartyAuthApiClient, enroll_user_in_course_locally
 from enterprise.api_client.discovery import CourseCatalogApiClient
+from enterprise.api_client.lms import EnrollmentApiClient, ThirdPartyAuthApiClient, enroll_user_in_course_locally
 from enterprise.utils import NotConnectedToOpenEdX
 from enterprise.validators import validate_image_extension, validate_image_size
 from six.moves.urllib.parse import urljoin  # pylint: disable=import-error,ungrouped-imports
