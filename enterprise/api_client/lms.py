@@ -11,6 +11,7 @@ from time import time
 
 import requests
 from edx_rest_api_client.client import EdxRestApiClient
+from opaque_keys.edx.keys import CourseKey
 from slumber.exceptions import HttpNotFoundError
 
 from django.conf import settings
@@ -18,11 +19,6 @@ from django.utils import timezone
 
 from enterprise.constants import COURSE_MODE_SORT_ORDER
 from enterprise.utils import NotConnectedToOpenEdX
-
-try:
-    from opaque_keys.edx.keys import CourseKey
-except ImportError:
-    CourseKey = None
 
 try:
     from student.models import CourseEnrollment
