@@ -12,7 +12,6 @@ from logging import getLogger
 
 from enterprise.api_client.enterprise import EnterpriseApiClient
 
-
 EXCLUDED_COURSE_DETAIL_KEYS = [
     'course_runs',
 ]
@@ -76,7 +75,7 @@ class BaseCourseExporter(object):
         self.enterprise_customer = plugin_configuration.enterprise_customer
         self.plugin_configuration = plugin_configuration
         self.courses = []
-        for course_run in get_course_runs(self.user, self.enterprise_customer):
+        for course_run in get_course_runs(self.enterprise_customer):
             self.add_course_run(course_run)
 
     def add_course_run(self, course_run_details):

@@ -45,6 +45,6 @@ class EnterpriseApiClient(LmsApiClient):
                 'previous': 'None',
                 'results': all_response_results,
             }
-            cache_key.set(cache_key, response, settings.ENTERPRISE_API_CACHE_TIMEOUT)
+            cache.set(cache_key, response, settings.ENTERPRISE_API_CACHE_TIMEOUT)
 
         return response
