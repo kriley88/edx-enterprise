@@ -29,6 +29,7 @@ from model_utils.models import TimeStampedModel
 from enterprise import utils
 from enterprise.api_client.discovery import CourseCatalogApiClient
 from enterprise.api_client.lms import EnrollmentApiClient, ThirdPartyAuthApiClient, enroll_user_in_course_locally
+from enterprise.decorators import deprecated
 from enterprise.utils import NotConnectedToOpenEdX
 from enterprise.validators import validate_image_extension, validate_image_size
 from six.moves.urllib.parse import urljoin  # pylint: disable=import-error,ungrouped-imports
@@ -38,7 +39,7 @@ try:
 except ImportError:
     configuration_helpers = None
 
-logger = getLogger(__name__)  # pylint: disable=invalid-name
+LOGGER = getLogger(__name__)
 
 mark_safe_lazy = lazy(mark_safe, six.text_type)  # pylint: disable=invalid-name
 
@@ -712,7 +713,8 @@ class UserDataSharingConsentAudit(TimeStampedModel):
     history = HistoricalRecords()
 
     @property
-    def enabled(self):
+    @deprecated('See consent.models.DataSharingConsent.')
+    def enabled(self):  # pragma: no cover
         """
         Determine whether the user has enabled data sharing.
         """
@@ -814,7 +816,8 @@ class EnterpriseCourseEnrollment(TimeStampedModel):
     history = HistoricalRecords()
 
     @property
-    def consent_available(self):
+    @deprecated('See consent.models.DataSharingConsent.')
+    def consent_available(self):  # pragma: no cover
         """
         Determine whether we have consent to share details about this enrollment.
 
@@ -837,7 +840,8 @@ class EnterpriseCourseEnrollment(TimeStampedModel):
         return False
 
     @property
-    def consent_needed(self):
+    @deprecated('See consent.models.DataSharingConsent.')
+    def consent_needed(self):  # pragma: no cover
         """
         Determine if consent is necessary, but has not been provided yet.
         """
