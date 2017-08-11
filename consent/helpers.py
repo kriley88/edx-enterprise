@@ -42,17 +42,17 @@ def consent_provided(username, course_id, enterprise_customer_uuid):
     ).granted
 
 
-def consent_required(request_user, user_id, course_id, enterprise_customer_uuid):
+def consent_required(request_user, username, course_id, enterprise_customer_uuid):
     """
     Get whether consent is required by the ``EnterpriseCustomer``.
 
     :param request_user: The user making the request related to consent.
-    :param user_id: The user that grants consent.
+    :param username: The user that grants consent.
     :param course_id: The course for which consent is granted.
     :param enterprise_customer_uuid: The consent requester.
     :return: Whether consent is required for a course by an Enterprise customer from a user.
     """
-    if consent_provided(request_user.username, course_id, enterprise_customer_uuid):
+    if consent_provided(username, course_id, enterprise_customer_uuid):
         return False
     enterprise_customer = get_enterprise_customer(enterprise_customer_uuid)
     return bool(

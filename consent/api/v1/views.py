@@ -7,14 +7,8 @@ from __future__ import absolute_import, unicode_literals
 
 from consent.api import permissions
 from consent.errors import ConsentAPIRequestError
-from consent.helpers import (
-    consent_exists,
-    consent_provided,
-    consent_required,
-    get_enterprise_customer,
-    get_enterprise_customer_user,
-    get_user_id,
-)
+from consent.helpers import consent_exists, consent_provided, consent_required
+from consent.models import DataSharingConsent
 from edx_rest_framework_extensions.authentication import BearerAuthentication, JwtAuthentication
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.response import Response
@@ -22,8 +16,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
 from enterprise.api.throttles import ServiceUserThrottle
-# Will be using internal models at a later time.
-from enterprise.models import EnterpriseCourseEnrollment
+from enterprise.utils import get_enterprise_customer
 
 
 class DataSharingConsentView(APIView):
@@ -93,6 +86,24 @@ class DataSharingConsentView(APIView):
 
     QUERY_PARAM_METHODS = {'GET', 'DELETE'}
 
+    @classmethod
+    def set_consent_state(cls, granted, username='', course_id='', enterprise_customer_uuid=None):
+        """
+        Sets the consent state (boolean) to ``granted`` for the relevant ``EnterpriseCourseEnrollment`` instance.
+
+        :param granted: Whether to grant consent.
+        :param username: The ID of the user associated with the enrollment.
+        :param course_id: The ID of the course for which the user will grant/not grant consent.
+        :param enterprise_customer_uuid: The UUID of the Enterprise that seeks consent.
+        """
+        consent = DataSharingConsent.objects.get(
+            username=username,
+            course_id=course_id,
+            enterprise_customer__uuid=enterprise_customer_uuid
+        )
+        consent.granted = granted
+        consent.save()
+
     def get_required_query_params(self, request):
         """
         Gets ``username``, ``course_id``, and ``enterprise_customer_uuid``,
@@ -100,7 +111,6 @@ class DataSharingConsentView(APIView):
 
         :param request: The request to this endpoint.
         :return: The ``username``, ``course_id``, and ``enterprise_customer_uuid`` from the request.
-
         """
         if request.method in self.QUERY_PARAM_METHODS:
             username = request.query_params.get(
@@ -138,25 +148,6 @@ class DataSharingConsentView(APIView):
             )
         return username, course_id, enterprise_customer_uuid
 
-    def set_consent_state(self, granted, user_id=None, course_id=None, enterprise_customer_uuid=None):
-        """
-        Sets the consent state (boolean) to ``granted`` for the relevant ``EnterpriseCourseEnrollment`` instance.
-
-        :param granted: Whether to grant consent.
-        :param user_id: The ID of the user associated with the enrollment.
-        :param course_id: The ID of the course for which the user will grant/not grant consent.
-        :param enterprise_customer_uuid: The UUID of the Enterprise that seeks consent.
-
-        """
-        enterprise_customer = get_enterprise_customer(enterprise_customer_uuid)
-        enterprise_customer_user = get_enterprise_customer_user(enterprise_customer, user_id)
-        enterprise_course_enrollment, __ = EnterpriseCourseEnrollment.objects.get_or_create(
-            enterprise_customer_user=enterprise_customer_user,
-            course_id=course_id
-        )
-        enterprise_course_enrollment.consent_granted = granted
-        enterprise_course_enrollment.save()
-
     def get(self, request):
         """
         GET /consent/api/v1/data_sharing_consent?username=bob&course_id=id&enterprise_customer_uuid=uuid
@@ -166,7 +157,6 @@ class DataSharingConsentView(APIView):
             The course for which consent is granted.
         *enterprise_customer_uuid*
             The UUID of the enterprise customer that requires consent.
-
         """
         try:
             # Ensure that we got the required explicit parameters in the API
@@ -174,10 +164,9 @@ class DataSharingConsentView(APIView):
         except ConsentAPIRequestError as invalid_request:
             return Response({'error': str(invalid_request)}, status=HTTP_400_BAD_REQUEST)
 
-        user_id = get_user_id(username)
-        exists = consent_exists(user_id, course_id, enterprise_customer_uuid)
-        provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
-        required = consent_required(request.user, user_id, course_id, enterprise_customer_uuid)
+        exists = consent_exists(username, course_id, enterprise_customer_uuid)
+        provided = consent_provided(username, course_id, enterprise_customer_uuid)
+        required = consent_required(request.user, username, course_id, enterprise_customer_uuid)
 
         return Response({
             self.REQUIRED_PARAM_USERNAME: username,
@@ -206,7 +195,6 @@ class DataSharingConsentView(APIView):
             The course for which consent is granted.
         *enterprise_customer_uuid*
             The UUID of the enterprise customer that requires consent.
-
         """
         try:
             # Ensure that we got the required explicit parameters in the API
@@ -215,21 +203,19 @@ class DataSharingConsentView(APIView):
             return Response({'error': str(invalid_request)}, status=HTTP_400_BAD_REQUEST)
 
         # Determine whether consent is needed and if it's been provided already.
-        user_id = get_user_id(username)
-        exists = consent_exists(user_id, course_id, enterprise_customer_uuid)
-        provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
-
-        required = consent_required(request.user, user_id, course_id, enterprise_customer_uuid)
+        exists = consent_exists(username, course_id, enterprise_customer_uuid)
+        provided = consent_provided(username, course_id, enterprise_customer_uuid)
+        required = consent_required(request.user, username, course_id, enterprise_customer_uuid)
 
         if required:
             # If and only if the given EnterpriseCustomer requires data sharing consent
             # for the given course, then, since we've received a POST request, set the
             # consent state for the EC/user/course combo.
-            self.set_consent_state(True, user_id, course_id, enterprise_customer_uuid)
+            self.set_consent_state(True, username, course_id, enterprise_customer_uuid)
             # Get the current values to be returned in the API, since we likely
             # mutated them as a result of the above method call.
-            provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
-            required = consent_required(request.user, user_id, course_id, enterprise_customer_uuid)
+            provided = consent_provided(username, course_id, enterprise_customer_uuid)
+            required = consent_required(request.user, username, course_id, enterprise_customer_uuid)
             exists = True
 
         return Response({
@@ -259,18 +245,15 @@ class DataSharingConsentView(APIView):
             The course for which consent is granted.
         *enterprise_customer_uuid*
             The UUID of the enterprise customer that requires consent.
-
         """
         try:
             username, course_id, enterprise_customer_uuid = self.get_required_query_params(request)
         except ConsentAPIRequestError as invalid_request:
             return Response({'error': str(invalid_request)}, status=HTTP_400_BAD_REQUEST)
 
-        user_id = get_user_id(username)
-        self.set_consent_state(False, user_id, course_id, enterprise_customer_uuid)
-        provided = consent_provided(user_id, course_id, enterprise_customer_uuid)
-
-        required = consent_required(request.user, user_id, course_id, enterprise_customer_uuid)
+        self.set_consent_state(False, username, course_id, enterprise_customer_uuid)
+        provided = consent_provided(username, course_id, enterprise_customer_uuid)
+        required = consent_required(request.user, username, course_id, enterprise_customer_uuid)
 
         return Response({
             self.REQUIRED_PARAM_USERNAME: username,

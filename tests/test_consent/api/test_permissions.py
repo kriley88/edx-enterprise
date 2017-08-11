@@ -42,10 +42,10 @@ class TestConsentAPIPermissions(APITest):
         self.discovery_client = discovery_client_class.start().return_value
         self.discovery_client.course_in_catalog.return_value = True
         self.addCleanup(discovery_client_class.stop)
-        factories.EnterpriseCourseEnrollmentFactory.create(
+        factories.DataSharingConsentFactory.create(
             course_id=TEST_COURSE,
-            enterprise_customer_user__user_id=TEST_USER_ID,
-            enterprise_customer_user__enterprise_customer__uuid=TEST_UUID
+            username=TEST_USERNAME,
+            enterprise_customer__uuid=TEST_UUID
         )
 
     @ddt.data(
