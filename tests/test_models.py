@@ -31,6 +31,7 @@ from django.core.files import File
 from django.core.files.storage import Storage
 from django.test.testcases import TransactionTestCase
 
+from enterprise.decorators import ignore_warning
 from enterprise.models import (
     EnrollmentNotificationEmailTemplate,
     EnterpriseCourseEnrollment,
@@ -563,6 +564,7 @@ class TestEnterpriseCustomerUser(unittest.TestCase):
         ),
     )
     @ddt.unpack
+    @ignore_warning(DeprecationWarning)
     def test_entitlements(
             self, enable_data_sharing_consent, enforce_data_sharing_consent,
             learner_consent_state, entitlements, expected_entitlements,
@@ -979,16 +981,38 @@ class TestProxyDataSharingConsent(TransactionTestCase):
             course_id='hard_course_2017'
         )
 
-    def test_commit(self):
+    @ddt.data(
+        'commit', 'save'
+    )
+    def test_commit_and_synonyms(self, func):
         """
-        Test that ``ProxyDataSharingConsent``'s ``commit`` method properly creates/saves/returns a new
-        ``DataSharingConsent`` instance, or returns ``None`` for any validation errors (i.e. conflict).
+        Test that ``ProxyDataSharingConsent``'s ``commit`` method (and any synonyms) properly creates/saves/returns
+        a new ``DataSharingConsent`` instance, or returns ``None`` for any validation errors (i.e. conflict).
         """
-        new_dsc = self.proxy_dsc.commit()
-        no_dsc = self.proxy_dsc.commit()
+        new_dsc = getattr(self.proxy_dsc, func)()
+        no_dsc = getattr(self.proxy_dsc, func)()
         assert DataSharingConsent.objects.count() == 1
         assert DataSharingConsent.objects.all().first() == new_dsc
         assert no_dsc is None
+
+    @ddt.data(
+        {
+            'enterprise_customer__name': 'rich_enterprise',
+            'enterprise_customer__enable_data_sharing_consent': True,
+        },
+        {
+            'enterprise_customer__name': 'rich_enterprise',
+            'enterprise_customer__enable_data_sharing_consent': True,
+            'lets_see_if__this': 'is_ignored',
+        }
+    )
+    def test_create_new_proxy_with_composite_query(self, kwargs):
+        """
+        Test that we can use composite queries for enterprise customers.
+        """
+        proxy_dsc = ProxyDataSharingConsent(**kwargs)
+        the_only_enterprise_customer = EnterpriseCustomer.objects.all().first()  # pylint: disable=no-member
+        assert the_only_enterprise_customer == proxy_dsc.enterprise_customer
 
     @ddt.data(
         str, repr
