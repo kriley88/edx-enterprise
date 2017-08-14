@@ -220,7 +220,12 @@ class GrantDataSharingPermissions(View):
                     course_id=course_id
                 )
                 customer = enrollment.enterprise_customer_user.enterprise_customer
-                if not consent_required(request.user.username, course_id, customer.uuid):
+                if not consent_required(
+                        request.user,
+                        enrollment.enterprise_customer_user.username,
+                        course_id,
+                        customer.uuid
+                ):
                     raise Http404
             except EnterpriseCourseEnrollment.DoesNotExist:
                 # Enrollment is not deferred, but we don't have
@@ -710,10 +715,21 @@ class CourseEnrollmentView(View):
                 break
 
         if not selected_course_mode:
-            return self.get_enterprise_course_enrollment_page(request, enterprise_customer, course, course_modes,
-                                                              enterprise_course_enrollment, data_sharing_consent)
+            return self.get_enterprise_course_enrollment_page(
+                request,
+                enterprise_customer,
+                course,
+                course_modes,
+                enterprise_course_enrollment,
+                data_sharing_consent
+            )
 
-        user_consent_needed = consent_required(enterprise_customer_user.username, course_id, enterprise_customer.uuid)
+        user_consent_needed = consent_required(
+            request.user,
+            enterprise_customer_user.username,
+            course_id,
+            enterprise_customer.uuid
+        )
         if not selected_course_mode.get('premium') and not user_consent_needed:
             # For the audit course modes (audit, honor), where DSC is not
             # required, enroll the learner directly through enrollment API

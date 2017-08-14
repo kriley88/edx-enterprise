@@ -141,7 +141,7 @@ class MigrateToNewDataSharingConsentTest(MigrationTestCase):
         self.migrate_to_dest()
 
         data_sharing_consent = DataSharingConsent.objects.all().first()
-        if self.enterprise_course_enrollment.consent_available or self.user_data_sharing_consent_audit.enabled:
+        if self.enterprise_course_enrollment.consent_available:
             self.assertTrue(data_sharing_consent.granted)
         else:
             self.assertFalse(data_sharing_consent.granted)

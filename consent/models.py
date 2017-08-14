@@ -72,13 +72,11 @@ class ProxyDataSharingConsent(ConsentModelMixin):
         ec_keys = {}
         for key in kwargs:
             if str(key).startswith('enterprise_customer__'):
-                ec_keys.update({key[len('enterprise_customer__'):]: kwargs[key]})
+                enterprise_customer_detail = key[len('enterprise_customer__'):]
+                ec_keys[enterprise_customer_detail] = kwargs[key]
 
         if ec_keys:
-            try:
-                enterprise_customer = EnterpriseCustomer.objects.get(**ec_keys)  # pylint: disable=no-member
-            except EnterpriseCustomer.DoesNotExist:
-                enterprise_customer = None
+            enterprise_customer = EnterpriseCustomer.objects.get(**ec_keys)  # pylint: disable=no-member
 
         self.enterprise_customer = enterprise_customer
         self.username = username

@@ -106,6 +106,7 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
 
     @mock.patch('enterprise.views.render', side_effect=fake_render)
     @mock.patch('enterprise.views.configuration_helpers')
+    @mock.patch('enterprise.models.CourseCatalogApiClient')
     @mock.patch('enterprise.views.CourseApiClient')
     @ddt.data(
         (False, False, True),
@@ -119,11 +120,13 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
             supply_customer_uuid,
             existing_course_enrollment,
             course_api_client_mock,
+            course_catalog_api_client_mock,
             mock_config,
             *args
     ):  # pylint: disable=unused-argument
         course_id = 'course-v1:edX+DemoX+Demo_Course'
         mock_config.get_value.return_value = 'My Platform'
+        course_catalog_api_client_mock.return_value.course_in_catalog.return_value = True
         client = course_api_client_mock.return_value
         client.get_course_details.return_value = {
             'name': 'edX Demo Course',
@@ -192,6 +195,7 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
 
     @mock.patch('enterprise.views.render', side_effect=fake_render)
     @mock.patch('enterprise.views.configuration_helpers')
+    @mock.patch('enterprise.models.CourseCatalogApiClient')
     @mock.patch('enterprise.views.CourseApiClient')
     @ddt.data(
         (False, False),
@@ -203,11 +207,13 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
             enrollment_deferred,
             supply_customer_uuid,
             course_api_client_mock,
+            course_catalog_api_client_mock,
             mock_config,
             *args
     ):  # pylint: disable=unused-argument
         course_id = 'course-v1:edX+DemoX+Demo_Course'
         mock_config.get_value.return_value = 'My Platform'
+        course_catalog_api_client_mock.return_value.course_in_catalog.return_value = True
         client = course_api_client_mock.return_value
         client.get_course_details.return_value = {
             'name': 'edX Demo Course',

@@ -36,14 +36,7 @@ def populate_data_sharing_consent(apps, schema_editor):
             enterprise_customer=enrollment.enterprise_customer_user.enterprise_customer,
             course_id=enrollment.course_id
         )
-        if enrollment.consent_available:
-            data_sharing_consent.granted = True
-        else:
-            # As a last resort, we check the UDSCA record.
-            user_data_sharing_consent_audit = UserDataSharingConsentAudit.objects.get(
-                user=enrollment.enterprise_customer_user
-            )
-            data_sharing_consent.granted = user_data_sharing_consent_audit.enabled
+        data_sharing_consent.granted = enrollment.consent_available
         data_sharing_consent.save()
 
 

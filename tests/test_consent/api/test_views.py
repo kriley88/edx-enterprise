@@ -13,6 +13,7 @@ from rest_framework.reverse import reverse
 from django.conf import settings
 
 from test_utils import (
+    FAKE_UUIDS,
     TEST_COURSE,
     TEST_PASSWORD,
     TEST_USER_ID,
@@ -460,6 +461,29 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             },
             400
         ),
+        # Invalid `enterprise_customer_uuid` input.
+        (
+            factories.DataSharingConsentFactory,
+            [{
+                'username': TEST_USERNAME,
+                'course_id': TEST_COURSE,
+                'enterprise_customer__uuid': TEST_UUID,
+            }],
+            {
+                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[0],
+                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
+            },
+            {
+                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[0],
+                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
+                DSCView.CONSENT_EXISTS: False,
+                DSCView.CONSENT_GRANTED: False,
+                DSCView.CONSENT_REQUIRED: False,
+            },
+            200
+        ),
         (
             factories.DataSharingConsentFactory,
             [{
@@ -882,6 +906,29 @@ class TestConsentAPIViews(APITest, ConsentMixin):
                 )
             },
             400
+        ),
+        # Invalid `enterprise_customer_uuid` input.
+        (
+            factories.DataSharingConsentFactory,
+            [{
+                'username': TEST_USERNAME,
+                'course_id': TEST_COURSE,
+                'enterprise_customer__uuid': TEST_UUID,
+            }],
+            {
+                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[0],
+                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
+            },
+            {
+                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[0],
+                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
+                DSCView.CONSENT_EXISTS: False,
+                DSCView.CONSENT_GRANTED: False,
+                DSCView.CONSENT_REQUIRED: False,
+            },
+            200
         ),
         (
             factories.DataSharingConsentFactory,
