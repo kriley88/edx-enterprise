@@ -84,7 +84,8 @@ class DataSharingConsentView(APIView):
 
     QUERY_PARAM_METHODS = {'GET', 'DELETE'}
 
-    def set_consent_state(self, granted, username='', course_id='', enterprise_customer_uuid=None):
+    @staticmethod
+    def set_consent_state(granted, username='', course_id='', enterprise_customer_uuid=None):
         """
         Sets the consent state (boolean) to ``granted`` for the relevant ``EnterpriseCourseEnrollment`` instance.
 
@@ -92,7 +93,6 @@ class DataSharingConsentView(APIView):
         :param username: The ID of the user associated with the enrollment.
         :param course_id: The ID of the course for which the user will grant/not grant consent.
         :param enterprise_customer_uuid: The UUID of the Enterprise that seeks consent.
-        :raise: DataSharingConsent.DoesNotExist if the consent state could not be set.
         """
         consent = get_data_sharing_consent(username, course_id, enterprise_customer_uuid)
         if consent:
