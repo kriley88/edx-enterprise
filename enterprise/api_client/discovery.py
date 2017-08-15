@@ -240,6 +240,22 @@ class CourseCatalogApiClient(object):
             default=None
         )
 
+    def get_paginated_programs(self, querystring=None):
+        """
+        Return a paginated list of programs.
+
+        Returns:
+            dict: Paginated response containing programs.
+
+        """
+        return self._load_data(
+            self.PROGRAMS_ENDPOINT,
+            default=[],
+            querystring=querystring,
+            traverse_pagination=False,
+            many=False
+        )
+
     def get_common_course_modes(self, course_run_ids):
         """
         Find common course modes for a set of course runs.
