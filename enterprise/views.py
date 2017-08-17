@@ -583,9 +583,13 @@ class CourseEnrollmentView(View):
         min_effort = course_run['min_effort'] or ''
         max_effort = course_run['max_effort'] or ''
         effort_hours = '{min}-{max}'.format(min=min_effort, max=max_effort).strip('-')
-        if '-' not in effort_hours:
-            effort_hours = int(effort_hours)
         if effort_hours:
+            # If we are dealing with just one of min/max effort
+            # cast the hours value to a string so that pluralization
+            # is handled appropriately when formatting the full
+            # course effort string below.
+            if '-' not in effort_hours:
+                effort_hours = int(effort_hours)
             course_effort = ungettext(
                 '{hours} hour per week',
                 '{hours} hours per week',
