@@ -10,6 +10,7 @@ import re
 from uuid import UUID
 
 import six
+from opaque_keys.edx.keys import CourseKey
 
 from django.apps import apps
 from django.conf import settings
@@ -587,3 +588,17 @@ def traverse_pagination(response, endpoint):
         next_page = response.get('next')
 
     return results
+
+
+def get_course_id_from_course_run_id(course_run_id):
+    """
+    Given a course run id, return the corresponding course id.
+
+    Args:
+        course_run_id (str): The course run ID.
+
+    Returns:
+        (str): The course ID.
+    """
+    course_run_key = CourseKey.from_string(course_run_id)
+    return '{org}+{course}'.format(org=course_run_key.org, course=course_run_key.course)

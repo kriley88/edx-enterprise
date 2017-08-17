@@ -36,10 +36,10 @@
         <h2 class="course-confirmation-title">{{ confirmation_text }}</h2>
         <div class="media">
           <div class="thumbnail">
-            <img class="course-image" src="{{ course_image_uri }}" alt="{{ course_name }}"/>
+            <img class="course-image" src="{{ course_image_uri }}" alt="{{ course_title }}"/>
           </div>
           <div class="media-content">
-            <div class="course-title">{{ course_name }}</div>
+            <div class="course-title">{{ course_title }}</div>
           </div>
         </div>
         <div class="course-detail">
@@ -93,10 +93,10 @@
         <header class="wrapper modal-header">
           <div class="modal-header-wrapper">
             <div class="image">
-              <img src="{{ course_image_uri }}" alt="{{ course_name }}"/>
+              <img src="{{ course_image_uri }}" alt="{{ course_title }}"/>
             </div>
             <div class="details">
-              <h1 id="modal-header-text">{{ course_name }}</h1>
+              <h1 id="modal-header-text">{{ course_title }}</h1>
               <p class="short-description">{{ course_short_description }}</p>
               {% if organization_logo and organization_name %}
                 <div class="organization">
@@ -162,7 +162,14 @@
             </ol>
           </div>
           <div class="overview">
-            {{ course_overview|safe }}
+            {% if expected_learning_items %}
+              <h2>{{ expected_learning_items_text }}</h2>
+              <ul>
+              {% for item in expected_learning_items %}
+                <li>{{ item }}</li>
+              {% endfor %}
+              </ul>
+            {% endif %}
           </div>
         </div>
 
