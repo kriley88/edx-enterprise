@@ -40,7 +40,7 @@ class TestConsentAPIPermissions(APITest):
         self.client.login(username=TEST_USERNAME, password=TEST_PASSWORD)
         discovery_client_class = mock.patch('enterprise.models.CourseCatalogApiClient')
         self.discovery_client = discovery_client_class.start().return_value
-        self.discovery_client.course_in_catalog.return_value = True
+        self.discovery_client.is_course_in_catalog.return_value = True
         self.addCleanup(discovery_client_class.stop)
         factories.DataSharingConsentFactory.create(
             course_id=TEST_COURSE,

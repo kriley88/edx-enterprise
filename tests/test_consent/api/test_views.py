@@ -365,45 +365,6 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             expected_response_body,
             expected_status_code
     ):
-        self.discovery_client.course_in_catalog.return_value = False
-        create_items(factory, items)
-        response = self.client.get(self.path, request_body)
-        self._assert_expectations(response, expected_response_body, expected_status_code)
-
-    @ddt.data(
-        (
-            factories.UserDataSharingConsentAuditFactory,
-            [{
-                'user__user_id': TEST_USER_ID,
-                'user__enterprise_customer__uuid': TEST_UUID,
-                'user__enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
-                'state': 'disabled'
-            }],
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-            },
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-                DSCView.CONSENT_EXISTS: True,
-                DSCView.CONSENT_GRANTED: False,
-                DSCView.CONSENT_REQUIRED: False,
-            },
-            200
-        ),
-    )
-    @ddt.unpack
-    def test_consent_api_get_endpoint_course_not_in_catalog(
-            self,
-            factory,
-            items,
-            request_body,
-            expected_response_body,
-            expected_status_code
-    ):
         self.discovery_client.is_course_in_catalog.return_value = False
         create_items(factory, items)
         response = self.client.get(self.path, request_body)
@@ -508,22 +469,21 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         (
-            factories.DataSharingConsentFactory,
+            factories.EnterpriseCustomerUserFactory,
             [{
-                'username': TEST_USERNAME,
-                'course_id': TEST_COURSE,
+                'user_id': TEST_USER_ID,
                 'enterprise_customer__uuid': TEST_UUID,
                 'enterprise_customer__enable_data_sharing_consent': False,
                 'enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
             }],
             {
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[4],
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
             },
             {
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[4],
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
                 DSCView.CONSENT_EXISTS: False,
                 DSCView.CONSENT_GRANTED: False,
@@ -532,21 +492,20 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         (
-            factories.DataSharingConsentFactory,
+            factories.EnterpriseCustomerUserFactory,
             [{
-                'username': TEST_USERNAME,
-                'course_id': TEST_COURSE,
+                'user_id': TEST_USER_ID,
                 'enterprise_customer__uuid': TEST_UUID,
                 'enterprise_customer__enforce_data_sharing_consent': 'externally_managed',
             }],
             {
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[4],
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
             },
             {
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[4],
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
                 DSCView.CONSENT_EXISTS: False,
                 DSCView.CONSENT_GRANTED: False,
@@ -555,22 +514,21 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         (
-            factories.DataSharingConsentFactory,
+            factories.EnterpriseCustomerUserFactory,
             [{
-                'username': TEST_USERNAME,
-                'course_id': TEST_COURSE,
+                'user_id': TEST_USER_ID,
                 'enterprise_customer__uuid': TEST_UUID,
                 'enterprise_customer__enable_data_sharing_consent': False,
                 'enterprise_customer__enforce_data_sharing_consent': 'externally_managed',
             }],
             {
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[4],
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
             },
             {
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
+                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: FAKE_UUIDS[4],
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
                 DSCView.CONSENT_EXISTS: False,
                 DSCView.CONSENT_GRANTED: False,
@@ -818,44 +776,6 @@ class TestConsentAPIViews(APITest, ConsentMixin):
         self._assert_expectations(response, expected_response_body, expected_status_code)
 
     @ddt.data(
-        (
-            factories.EnterpriseCustomerUserFactory,
-            [{
-                'user_id': TEST_USER_ID,
-                'enterprise_customer__uuid': TEST_UUID,
-                'enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
-            }],
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-            },
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-                DSCView.CONSENT_EXISTS: False,
-                DSCView.CONSENT_GRANTED: False,
-                DSCView.CONSENT_REQUIRED: False,
-            },
-            200
-        ),
-    )
-    @ddt.unpack
-    def test_consent_api_post_endpoint_course_not_in_catalog(
-            self,
-            factory,
-            items,
-            request_body,
-            expected_response_body,
-            expected_status_code
-    ):
-        self.discovery_client.course_in_catalog.return_value = False
-        create_items(factory, items)
-        response = self.client.post(self.path, request_body)
-        self._assert_expectations(response, expected_response_body, expected_status_code)
-
-    @ddt.data(
         # Missing `username` input.
         (
             factories.DataSharingConsentFactory,
@@ -931,10 +851,9 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         (
-            factories.DataSharingConsentFactory,
+            factories.EnterpriseCustomerUserFactory,
             [{
-                'username': TEST_USERNAME,
-                'course_id': TEST_COURSE,
+                'user_id': TEST_USER_ID,
                 'enterprise_customer__uuid': TEST_UUID,
                 'enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
             }],
@@ -954,10 +873,9 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         (
-            factories.DataSharingConsentFactory,
+            factories.EnterpriseCustomerUserFactory,
             [{
-                'username': TEST_USERNAME,
-                'course_id': TEST_COURSE,
+                'user_id': TEST_USER_ID,
                 'enterprise_customer__uuid': TEST_UUID,
                 'enterprise_customer__enable_data_sharing_consent': False,
                 'enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
@@ -978,10 +896,9 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         (
-            factories.DataSharingConsentFactory,
+            factories.EnterpriseCustomerUserFactory,
             [{
-                'username': TEST_USERNAME,
-                'course_id': TEST_COURSE,
+                'user_id': TEST_USER_ID,
                 'enterprise_customer__uuid': TEST_UUID,
                 'enterprise_customer__enforce_data_sharing_consent': 'externally_managed',
             }],
@@ -1001,10 +918,9 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         (
-            factories.DataSharingConsentFactory,
+            factories.EnterpriseCustomerUserFactory,
             [{
-                'username': TEST_USERNAME,
-                'course_id': TEST_COURSE,
+                'user_id': TEST_USER_ID,
                 'enterprise_customer__uuid': TEST_UUID,
                 'enterprise_customer__enable_data_sharing_consent': False,
                 'enterprise_customer__enforce_data_sharing_consent': 'externally_managed',
@@ -1220,50 +1136,6 @@ class TestConsentAPIViews(APITest, ConsentMixin):
     @ddt.unpack
     def test_consent_api_delete_endpoint(self, factory, items, request_body,
                                          expected_response_body, expected_status_code):
-        if factory:
-            create_items(factory, items)
-        response = self.client.delete(self.path, request_body)
-        self._assert_expectations(response, expected_response_body, expected_status_code)
-        # Assert that an enterprise course enrollment exists without consent provided.
-        if expected_status_code == 200:
-            self._assert_consent_not_provided(response)
-
-    @ddt.data(
-        (
-            factories.EnterpriseCourseEnrollmentFactory,
-            [{
-                'course_id': TEST_COURSE,
-                'enterprise_customer_user__user_id': TEST_USER_ID,
-                'enterprise_customer_user__enterprise_customer__uuid': TEST_UUID,
-                'enterprise_customer_user__enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
-                'consent_granted': False
-            }],
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-            },
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-                DSCView.CONSENT_EXISTS: True,
-                DSCView.CONSENT_GRANTED: False,
-                DSCView.CONSENT_REQUIRED: False,
-            },
-            200
-        ),
-    )
-    @ddt.unpack
-    def test_consent_api_delete_endpoint_course_not_in_catalog(
-            self,
-            factory,
-            items,
-            request_body,
-            expected_response_body,
-            expected_status_code
-    ):
-        self.discovery_client.course_in_catalog.return_value = False
         if factory:
             create_items(factory, items)
         response = self.client.delete(self.path, request_body)
