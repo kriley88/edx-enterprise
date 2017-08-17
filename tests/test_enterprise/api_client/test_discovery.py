@@ -193,7 +193,7 @@ class TestCourseCatalogApi(unittest.TestCase):
         Verify get_course_details of CourseCatalogApiClient works as expected for empty responses.
         """
         self.get_data_mock.return_value = response
-        assert self.api.get_course_details(course_key='edX+DemoX') == {}
+        assert self.api.get_course_details(course_id='edX+DemoX') == {}
 
     def test_get_catalog(self):
         """
