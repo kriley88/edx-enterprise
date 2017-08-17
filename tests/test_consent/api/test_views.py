@@ -6,7 +6,6 @@ Tests for the Consent application's API module.
 from __future__ import absolute_import, unicode_literals
 
 import ddt
-import mock
 from consent.api.v1.views import DataSharingConsentView as DSCView
 from rest_framework.reverse import reverse
 
@@ -33,13 +32,6 @@ class TestConsentAPIViews(APITest, ConsentMixin):
 
     endpoint_name = 'data_sharing_consent'
     path = settings.TEST_SERVER + reverse(endpoint_name)
-
-    def setUp(self):
-        discovery_client_class = mock.patch('enterprise.models.CourseCatalogApiClient')
-        self.discovery_client = discovery_client_class.start().return_value
-        self.discovery_client.course_in_catalog.return_value = True
-        self.addCleanup(discovery_client_class.stop)
-        super(TestConsentAPIViews, self).setUp()
 
     def create_user(self, username=TEST_USERNAME, password=TEST_PASSWORD, **kwargs):
         """
@@ -556,45 +548,6 @@ class TestConsentAPIViews(APITest, ConsentMixin):
         self._assert_expectations(response, expected_response_body, expected_status_code)
 
     @ddt.data(
-        (
-            factories.UserDataSharingConsentAuditFactory,
-            [{
-                'user__user_id': TEST_USER_ID,
-                'user__enterprise_customer__uuid': TEST_UUID,
-                'user__enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
-                'state': 'disabled'
-            }],
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-            },
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-                DSCView.CONSENT_EXISTS: True,
-                DSCView.CONSENT_GRANTED: False,
-                DSCView.CONSENT_REQUIRED: False,
-            },
-            200
-        ),
-    )
-    @ddt.unpack
-    def test_consent_api_get_endpoint_course_not_in_catalog(
-            self,
-            factory,
-            items,
-            request_body,
-            expected_response_body,
-            expected_status_code
-    ):
-        self.discovery_client.course_in_catalog.return_value = False
-        create_items(factory, items)
-        response = self.client.get(self.path, request_body)
-        self._assert_expectations(response, expected_response_body, expected_status_code)
-
-    @ddt.data(
         # Missing `username` input.
         (
             factories.EnterpriseCourseEnrollmentFactory,
@@ -689,7 +642,7 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         # No consent in an enterprise course enrollment (at enrollment).
-        # No consent should be created, because consent is disabled.
+        # Expect new consent resource to be created with consent provided (at enrollment).
         (
             factories.EnterpriseCustomerUserFactory,
             [{
@@ -707,14 +660,14 @@ class TestConsentAPIViews(APITest, ConsentMixin):
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
                 DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-                DSCView.CONSENT_EXISTS: False,
-                DSCView.CONSENT_GRANTED: False,
+                DSCView.CONSENT_EXISTS: True,
+                DSCView.CONSENT_GRANTED: True,
                 DSCView.CONSENT_REQUIRED: False,
             },
             200
         ),
         # No consent in an enterprise course enrollment (externally managed).
-        # Because consent doesn't need to be given, it won't be saved if POSTed.
+        # Expect new consent resource to be created with consent provided (externally managed).
         (
             factories.EnterpriseCustomerUserFactory,
             [{
@@ -731,14 +684,14 @@ class TestConsentAPIViews(APITest, ConsentMixin):
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
                 DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-                DSCView.CONSENT_EXISTS: False,
-                DSCView.CONSENT_GRANTED: False,
+                DSCView.CONSENT_EXISTS: True,
+                DSCView.CONSENT_GRANTED: True,
                 DSCView.CONSENT_REQUIRED: False,
             },
             200
         ),
         # No consent in an enterprise course enrollment (externally managed).
-        # Because consent doesn't need to be given, it won't be saved if POSTed.
+        # Expect new consent resource to be created with consent provided (externally managed).
         (
             factories.EnterpriseCustomerUserFactory,
             [{
@@ -756,8 +709,8 @@ class TestConsentAPIViews(APITest, ConsentMixin):
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
                 DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-                DSCView.CONSENT_EXISTS: False,
-                DSCView.CONSENT_GRANTED: False,
+                DSCView.CONSENT_EXISTS: True,
+                DSCView.CONSENT_GRANTED: True,
                 DSCView.CONSENT_REQUIRED: False,
             },
             200
@@ -842,7 +795,7 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         # Consent not given for an enterprise course enrollment (at enrollment).
-        # Expect nothing to change, since consent is not presently enabled.
+        # Expect consent to be given (at enrollment).
         (
             factories.EnterpriseCourseEnrollmentFactory,
             [{
@@ -863,7 +816,7 @@ class TestConsentAPIViews(APITest, ConsentMixin):
                 DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
                 DSCView.CONSENT_EXISTS: True,
-                DSCView.CONSENT_GRANTED: False,
+                DSCView.CONSENT_GRANTED: True,
                 DSCView.CONSENT_REQUIRED: False,
             },
             200
@@ -895,7 +848,7 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         # Consent not given for an enterprise course enrollment (externally managed).
-        # Because consent doesn't need to be given, it won't be saved if POSTed.
+        # Expect consent to be given (externally managed).
         (
             factories.EnterpriseCourseEnrollmentFactory,
             [{
@@ -915,7 +868,7 @@ class TestConsentAPIViews(APITest, ConsentMixin):
                 DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
                 DSCView.CONSENT_EXISTS: True,
-                DSCView.CONSENT_GRANTED: False,
+                DSCView.CONSENT_GRANTED: True,
                 DSCView.CONSENT_REQUIRED: False,
             },
             200
@@ -948,7 +901,7 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             200
         ),
         # Consent not given for an enterprise course enrollment (externally managed).
-        # Because consent doesn't need to be given, it won't be saved if POSTed.
+        # Expect consent to be given (externally managed).
         (
             factories.EnterpriseCourseEnrollmentFactory,
             [{
@@ -969,7 +922,7 @@ class TestConsentAPIViews(APITest, ConsentMixin):
                 DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
                 DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
                 DSCView.CONSENT_EXISTS: True,
-                DSCView.CONSENT_GRANTED: False,
+                DSCView.CONSENT_GRANTED: True,
                 DSCView.CONSENT_REQUIRED: False,
             },
             200
@@ -982,44 +935,9 @@ class TestConsentAPIViews(APITest, ConsentMixin):
             create_items(factory, items)
         response = self.client.post(self.path, request_body)
         self._assert_expectations(response, expected_response_body, expected_status_code)
-
-    @ddt.data(
-        (
-            factories.EnterpriseCustomerUserFactory,
-            [{
-                'user_id': TEST_USER_ID,
-                'enterprise_customer__uuid': TEST_UUID,
-                'enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
-            }],
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-            },
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-                DSCView.CONSENT_EXISTS: False,
-                DSCView.CONSENT_GRANTED: False,
-                DSCView.CONSENT_REQUIRED: False,
-            },
-            200
-        ),
-    )
-    @ddt.unpack
-    def test_consent_api_post_endpoint_course_not_in_catalog(
-            self,
-            factory,
-            items,
-            request_body,
-            expected_response_body,
-            expected_status_code
-    ):
-        self.discovery_client.course_in_catalog.return_value = False
-        create_items(factory, items)
-        response = self.client.post(self.path, request_body)
-        self._assert_expectations(response, expected_response_body, expected_status_code)
+        # Assert that an enterprise course enrollment exists with consent provided.
+        if expected_status_code == 200:
+            self._assert_consent_provided(response)
 
     @ddt.data(
         # Missing `username` input.
@@ -1381,50 +1299,6 @@ class TestConsentAPIViews(APITest, ConsentMixin):
     @ddt.unpack
     def test_consent_api_delete_endpoint(self, factory, items, request_body,
                                          expected_response_body, expected_status_code):
-        if factory:
-            create_items(factory, items)
-        response = self.client.delete(self.path, request_body)
-        self._assert_expectations(response, expected_response_body, expected_status_code)
-        # Assert that an enterprise course enrollment exists without consent provided.
-        if expected_status_code == 200:
-            self._assert_consent_not_provided(response)
-
-    @ddt.data(
-        (
-            factories.EnterpriseCourseEnrollmentFactory,
-            [{
-                'course_id': TEST_COURSE,
-                'enterprise_customer_user__user_id': TEST_USER_ID,
-                'enterprise_customer_user__enterprise_customer__uuid': TEST_UUID,
-                'enterprise_customer_user__enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
-                'consent_granted': False
-            }],
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-            },
-            {
-                DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,
-                DSCView.REQUIRED_PARAM_ENTERPRISE_CUSTOMER: TEST_UUID,
-                DSCView.REQUIRED_PARAM_COURSE_ID: TEST_COURSE,
-                DSCView.CONSENT_EXISTS: True,
-                DSCView.CONSENT_GRANTED: False,
-                DSCView.CONSENT_REQUIRED: False,
-            },
-            200
-        ),
-    )
-    @ddt.unpack
-    def test_consent_api_delete_endpoint_course_not_in_catalog(
-            self,
-            factory,
-            items,
-            request_body,
-            expected_response_body,
-            expected_status_code
-    ):
-        self.discovery_client.course_in_catalog.return_value = False
         if factory:
             create_items(factory, items)
         response = self.client.delete(self.path, request_body)
