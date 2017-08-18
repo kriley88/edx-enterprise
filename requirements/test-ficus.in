@@ -13,6 +13,7 @@ django-filter==0.11.0                   # HTTP Request filters for Django and DR
 django-model-utils==2.3.1               # Provides TimeStampedModel abstract base class
 edx-django-oauth2-provider==1.1.4       # edx Django OAuth2 provider
 edx-drf-extensions==1.2.2               # edX extensions to django rest framework
+edx-opaque-keys==0.4.0                  # Tools to handle Open edX course and course run IDs
 unicodecsv==0.14.1                      # Allows exporting CSV with unicode support (a drop-in replacement for built-in csv module)
 Pillow==3.4                             # Image manipulation module, required to use ImageField
 django-extensions==1.5.9                # Required to use TimeStampedModel
