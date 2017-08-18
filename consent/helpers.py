@@ -11,19 +11,6 @@ from enterprise.models import EnterpriseCustomer
 from enterprise.utils import get_enterprise_customer
 
 
-def consent_exists(username, course_id, enterprise_customer_uuid):
-    """
-    Get whether any consent is associated with an ``EnterpriseCustomer``.
-
-    :param username: The user that grants consent.
-    :param course_id: The course for which consent is granted.
-    :param enterprise_customer_uuid: The consent requester.
-    :return: Whether any consent (provided or unprovided) exists.
-    """
-    consent = get_data_sharing_consent(username, course_id, enterprise_customer_uuid)
-    return consent.exists if consent else False
-
-
 def consent_provided(username, course_id, enterprise_customer_uuid):
     """
     Get whether consent is provided by the user to the Enterprise customer.
@@ -53,7 +40,7 @@ def consent_required(request_user, username, course_id, enterprise_customer_uuid
     return bool(
         (enterprise_customer is not None) and
         (enterprise_customer.enforces_data_sharing_consent('at_enrollment')) and
-        (enterprise_customer.catalog_contains_course_run(request_user, course_id))
+        (enterprise_customer.catalog_contains_course(request_user, course_id))
     )
 
 
@@ -67,7 +54,7 @@ def get_data_sharing_consent(username, course_id, enterprise_customer_uuid):
     :return: The data sharing consent object, or None if the enterprise customer for the given UUID does not exist.
     """
     try:
-        return DataSharingConsent.objects.get(
+        return DataSharingConsent.objects.proxied_get(
             username=username,
             course_id=course_id,
             enterprise_customer__uuid=enterprise_customer_uuid

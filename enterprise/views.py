@@ -550,8 +550,7 @@ class CourseEnrollmentView(View):
             enrollment_client = EnrollmentApiClient()
             modes = enrollment_client.get_course_modes(course_run_id)
         except HttpClientError:
-            LOGGER.error('Failed to determine available course modes for course ID: %s', course_id)\
-            raise Http404
+            LOGGER.error('Failed to determine available course modes for course ID: %s', course_id)
 
         course_modes = []
 
@@ -685,7 +684,7 @@ class CourseEnrollmentView(View):
             user_id=request.user.id
         )
 
-        data_sharing_consent = DataSharingConsent.objects.get(
+        data_sharing_consent = DataSharingConsent.objects.proxied_get(
             username=enterprise_customer_user.username,
             course_id=course_id,
             enterprise_customer=enterprise_customer
@@ -807,7 +806,7 @@ class CourseEnrollmentView(View):
                 user_id=request.user.id
             )
 
-        data_sharing_consent = DataSharingConsent.objects.get(
+        data_sharing_consent = DataSharingConsent.objects.proxied_get(
             username=enterprise_customer_user.username,
             course_id=course_id,
             enterprise_customer=enterprise_customer
