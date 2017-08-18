@@ -48,8 +48,8 @@ def get_course_runs(enterprise_customer):
     """
     client = EnterpriseApiClient()
 
-    enterprise_courses = client.get_all_enterprise_courses(enterprise_customer)
-    LOGGER.info('Retrieving course list for enterprise %s', enterprise_customer.uuid)
+    enterprise_courses = client.get_enterprise_courses(enterprise_customer, traverse=True).get('results', [])
+    LOGGER.info('Retrieving course list for enterprise %s', enterprise_customer.name)
 
     for course_detail in enterprise_courses:
         for run in course_detail.get('course_runs', []):

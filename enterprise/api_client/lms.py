@@ -11,6 +11,7 @@ from time import time
 
 import requests
 from edx_rest_api_client.client import EdxRestApiClient
+from opaque_keys.edx.keys import CourseKey
 from slumber.exceptions import HttpNotFoundError
 
 from django.conf import settings
@@ -18,11 +19,6 @@ from django.utils import timezone
 
 from enterprise.constants import COURSE_MODE_SORT_ORDER
 from enterprise.utils import NotConnectedToOpenEdX
-
-try:
-    from opaque_keys.edx.keys import CourseKey
-except ImportError:
-    CourseKey = None
 
 try:
     from student.models import CourseEnrollment
@@ -390,8 +386,9 @@ def enroll_user_in_course_locally(user, course_id, mode):
     use to create a callback. Once we're able to depend on having Django 1.9, we
     can shift over to that, but for right now, we have to do it this way.
     """
-    if CourseKey is None and CourseEnrollment is None:
+    if CourseEnrollment is None:
         raise NotConnectedToOpenEdX("This package must be installed in an OpenEdX environment.")
+
     CourseEnrollment.enroll(user, CourseKey.from_string(course_id), mode=mode, check_access=True)
 
 
