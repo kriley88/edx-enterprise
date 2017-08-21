@@ -36,7 +36,7 @@ def get_complete_course_run_details(course_details, course_run_details):
     return course_run_details
 
 
-def get_course_runs(enterprise_customer):
+def get_course_runs(user, enterprise_customer):
     """
     List the course runs the given enterprise customer has in its catalog.
 
@@ -46,7 +46,7 @@ def get_course_runs(enterprise_customer):
     Returns:
         iterable: An iterable containing the details of each course run.
     """
-    client = EnterpriseApiClient()
+    client = EnterpriseApiClient(user)
 
     enterprise_courses = client.get_enterprise_courses(enterprise_customer, traverse=True).get('results', [])
     LOGGER.info('Retrieving course list for enterprise %s', enterprise_customer.name)
@@ -75,7 +75,7 @@ class BaseCourseExporter(object):
         self.enterprise_customer = plugin_configuration.enterprise_customer
         self.plugin_configuration = plugin_configuration
         self.courses = []
-        for course_run in get_course_runs(self.enterprise_customer):
+        for course_run in get_course_runs(self.user, self.enterprise_customer):
             self.add_course_run(course_run)
 
     def add_course_run(self, course_run_details):
