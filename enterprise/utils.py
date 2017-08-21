@@ -9,8 +9,8 @@ import logging
 import re
 from uuid import UUID
 
-from opaque_keys.edx.keys import CourseKey
 import six
+from opaque_keys.edx.keys import CourseKey
 
 from django.apps import apps
 from django.conf import settings
@@ -21,7 +21,7 @@ from django.http import Http404
 from django.template.loader import render_to_string
 from django.utils.translation import ugettext as _
 
-# pylint: disable=import-error,wrong-import-order
+# pylint: disable=import-error,wrong-import-order,ungrouped-imports
 from six.moves.urllib.parse import parse_qs, urlencode, urlparse, urlsplit, urlunparse, urlunsplit
 
 try:

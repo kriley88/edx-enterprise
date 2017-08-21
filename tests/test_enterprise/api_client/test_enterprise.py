@@ -5,6 +5,7 @@ from __future__ import absolute_import, unicode_literals, with_statement
 
 import unittest
 
+import mock
 import responses
 from pytest import mark
 
@@ -12,7 +13,7 @@ from django.core.cache import cache
 
 from enterprise.api_client import enterprise as enterprise_api
 from enterprise.utils import get_cache_key
-from test_utils.factories import EnterpriseCustomerFactory
+from test_utils.factories import EnterpriseCustomerFactory, UserFactory
 from test_utils.fake_enterprise_api import EnterpriseMockMixin
 
 
@@ -31,6 +32,7 @@ class TestEnterpriseApiClient(unittest.TestCase, EnterpriseMockMixin):
             name='Veridian Dynamics',
         )
         super(TestEnterpriseApiClient, self).setUp()
+        self.user = UserFactory(is_staff=True)
 
     def _assert_enterprise_courses_api_response(self, course_run_ids, api_response, expected_courses_count):
         """
@@ -48,6 +50,7 @@ class TestEnterpriseApiClient(unittest.TestCase, EnterpriseMockMixin):
         assert len(responses.calls) == expected_count
 
     @responses.activate
+    @mock.patch('enterprise.api_client.lms.JwtBuilder', mock.Mock())
     def test_get_enterprise_courses(self):
         """
         Verify that the client method `get_all_catalogs` works as expected.
@@ -66,7 +69,7 @@ class TestEnterpriseApiClient(unittest.TestCase, EnterpriseMockMixin):
 
         # Verify that by default enterprise client only fetches first paginated
         # response as the option `traverse` is False.
-        client = enterprise_api.EnterpriseApiClient()
+        client = enterprise_api.EnterpriseApiClient(self.user)
         api_response = client.get_enterprise_courses(self.enterprise_customer)
         self._assert_enterprise_courses_api_response(course_run_ids, api_response, expected_courses_count=1)
         # Verify the enterprise API was hit once
@@ -81,6 +84,7 @@ class TestEnterpriseApiClient(unittest.TestCase, EnterpriseMockMixin):
         assert cached_api_response == api_response
 
     @responses.activate
+    @mock.patch('enterprise.api_client.lms.JwtBuilder', mock.Mock())
     def test_get_enterprise_courses_with_traverse(self):
         """
         Verify that the client method `get_all_catalogs` fetches all courses.
@@ -103,7 +107,7 @@ class TestEnterpriseApiClient(unittest.TestCase, EnterpriseMockMixin):
 
         # Verify that by default enterprise client only fetches first paginated
         # response as the option `traverse` is False.
-        client = enterprise_api.EnterpriseApiClient()
+        client = enterprise_api.EnterpriseApiClient(self.user)
         api_response = client.get_enterprise_courses(self.enterprise_customer, traverse=traverse_pagination)
         self._assert_enterprise_courses_api_response(
             course_run_ids, api_response, expected_courses_count=len(course_run_ids)
