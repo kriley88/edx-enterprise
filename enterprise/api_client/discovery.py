@@ -188,11 +188,13 @@ class CourseCatalogApiClient(object):
         # Retrieve the course metadata from the catalog service.
         course = self.get_course_details(course_id)
 
-        # Find the specified course run.
         course_run = None
-        course_runs = [course_run for course_run in course['course_runs'] if course_run['key'] == course_run_id]
-        if course_runs:
-            course_run = course_runs[0]
+        if course:
+            # Find the specified course run.
+            course_run = None
+            course_runs = [course_run for course_run in course['course_runs'] if course_run['key'] == course_run_id]
+            if course_runs:
+                course_run = course_runs[0]
 
         return course, course_run
 
