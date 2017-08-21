@@ -552,4 +552,5 @@ def clean_html_for_template_rendering(text):
     Returns:
         (str): The cleaned text.
     """
-    return text.replace('\n', '')
+    # Sometimes there are random new lines between tags that don't render nicely.
+    return text.replace('>\\n<', '><')
