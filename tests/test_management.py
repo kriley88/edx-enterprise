@@ -86,6 +86,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
 
     @responses.activate
     @override_switch('SAP_USE_ENTERPRISE_ENROLLMENT_PAGE', active=True)
+    @mock.patch('enterprise.api_client.lms.JwtBuilder', mock.Mock())
     @mock.patch('integrated_channels.sap_success_factors.utils.reverse')
     @mock.patch('integrated_channels.sap_success_factors.transmitters.SAPSuccessFactorsAPIClient')
     @mock.patch('enterprise.models.configuration_helpers')

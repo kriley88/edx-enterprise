@@ -7,11 +7,11 @@ from __future__ import absolute_import, unicode_literals
 from django.conf import settings
 from django.core.cache import cache
 
-from enterprise.api_client.lms import LmsApiClient
+from enterprise.api_client.lms import JwtLmsApiClient
 from enterprise.utils import get_cache_key, traverse_pagination
 
 
-class EnterpriseApiClient(LmsApiClient):
+class EnterpriseApiClient(JwtLmsApiClient):
     """
     Object builds an API client to make calls to the Enterprise API.
     """
@@ -19,6 +19,7 @@ class EnterpriseApiClient(LmsApiClient):
     API_BASE_URL = settings.LMS_ROOT_URL + '/enterprise/api/v1/'
     APPEND_SLASH = True
 
+    @JwtLmsApiClient.refresh_token
     def get_enterprise_courses(self, enterprise_customer, traverse=False):
         """
         Query the Enterprise API for the courses detail of the given enterprise.
