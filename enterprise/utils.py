@@ -549,3 +549,16 @@ def get_course_id_from_course_run_id(course_run_id):
     """
     course_run_key = CourseKey.from_string(course_run_id)
     return '{org}+{course}'.format(org=course_run_key.org, course=course_run_key.course)
+
+
+def clean_html_for_template_rendering(text):
+    """
+    Given html text that will be rendered as a variable in a template, strip out characters that impact rendering.
+
+    Arguments:
+        text (str): The text to clean.
+
+    Returns:
+        (str): The cleaned text.
+    """
+    return text.replace('\n', '')
