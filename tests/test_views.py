@@ -885,7 +885,8 @@ class TestCourseEnrollmentView(MessagesMixin, TestCase):
     ):  # pylint: disable=unused-argument
         setup_course_catalog_api_client_mock(
             course_catalog_client_mock,
-            course_run_overrides={'min_effort': None, 'max_effort': 1}
+            course_run_overrides={'min_effort': None, 'max_effort': 1},
+            course_overrides={'owners':[{'name': 'Test Organization', 'logo_image_url': 'https://fake.org/fake.png'}]}
         )
         self._setup_ecommerce_client(ecommerce_api_client_mock, 30.1)
         configuration_helpers_mock.get_value.return_value = 'edX'
@@ -922,6 +923,8 @@ class TestCourseEnrollmentView(MessagesMixin, TestCase):
             'course_modes': course_modes,
             'premium_modes': course_modes,
             'course_effort': '1 hour per week',
+            'organization_name': 'Test Organization',
+            'organization_logo': 'https://fake.org/fake.png'
         }
 
         self._login()
