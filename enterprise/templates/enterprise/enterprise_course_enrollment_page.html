@@ -164,7 +164,7 @@
           <div class="overview">
             {% if course_full_description %}
               <h2>{{ course_full_description_text }}</h2>
-              <p>{{ course_full_description }}</p>
+              <div>{% autoescape off %}{{ course_full_description }}{% endautoescape %}</div>
             {% endif %}
             {% if expected_learning_items %}
               <h2>{{ expected_learning_items_text }}</h2>

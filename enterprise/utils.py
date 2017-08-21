@@ -9,7 +9,6 @@ import logging
 import re
 from uuid import UUID
 
-import six
 from opaque_keys.edx.keys import CourseKey
 
 from django.apps import apps
