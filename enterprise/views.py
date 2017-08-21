@@ -42,6 +42,7 @@ from enterprise.utils import (
     get_enterprise_customer_for_user,
     get_enterprise_customer_or_404,
     get_enterprise_customer_user,
+    clean_html_for_template_rendering,
 )
 from six.moves.urllib.parse import urlencode, urljoin  # pylint: disable=import-error
 
@@ -652,7 +653,7 @@ class CourseEnrollmentView(View):
             ),
             'course_modes': filter_audit_course_modes(enterprise_customer, course_modes),
             'course_effort': course_effort,
-            'course_full_description': course_run['full_description'],
+            'course_full_description': clean_html_for_template_rendering(course_run['full_description']),
             'organization_logo': organization_logo,
             'organization_name': organization_name,
             'course_level_type': course_run.get('level_type', ''),
