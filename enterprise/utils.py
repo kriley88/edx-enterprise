@@ -9,8 +9,8 @@ import logging
 import re
 from uuid import UUID
 
-import six
 from opaque_keys.edx.keys import CourseKey
+from six import iteritems
 
 from django.apps import apps
 from django.conf import settings
@@ -586,7 +586,7 @@ def get_cache_key(**kwargs):
     Returns:
          An MD5 encoded key uniquely identified by the key word arguments.
     """
-    key = '__'.join(['{}:{}'.format(item, value) for item, value in six.iteritems(kwargs)])
+    key = '__'.join(['{}:{}'.format(item, value) for item, value in iteritems(kwargs)])
 
     return hashlib.md5(key.encode('utf-8')).hexdigest()
 
