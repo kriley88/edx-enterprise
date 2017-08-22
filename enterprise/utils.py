@@ -10,6 +10,7 @@ import re
 from uuid import UUID
 
 from opaque_keys.edx.keys import CourseKey
+from six import iteritems
 
 from django.apps import apps
 from django.conf import settings
@@ -20,7 +21,7 @@ from django.http import Http404
 from django.template.loader import render_to_string
 from django.utils.translation import ugettext as _
 
-# pylint: disable=import-error,wrong-import-order
+# pylint: disable=import-error,wrong-import-order,ungrouped-imports
 from six.moves.urllib.parse import parse_qs, urlencode, urlparse, urlsplit, urlunparse, urlunsplit
 
 try:
@@ -477,6 +478,34 @@ def get_enterprise_customer_or_404(enterprise_uuid):
         raise Http404
 
 
+def get_course_id_from_course_run_id(course_run_id):
+    """
+    Given a course run id, return the corresponding course id.
+
+    Args:
+        course_run_id (str): The course run ID.
+
+    Returns:
+        (str): The course ID.
+    """
+    course_run_key = CourseKey.from_string(course_run_id)
+    return '{org}+{course}'.format(org=course_run_key.org, course=course_run_key.course)
+
+
+def clean_html_for_template_rendering(text):
+    """
+    Given html text that will be rendered as a variable in a template, strip out characters that impact rendering.
+
+    Arguments:
+        text (str): The text to clean.
+
+    Returns:
+        (str): The cleaned text.
+    """
+    # Sometimes there are random new lines between tags that don't render nicely.
+    return text.replace('>\\n<', '><')
+
+
 def get_cache_key(**kwargs):
     """
     Get MD5 encoded cache key for given arguments.
@@ -496,7 +525,7 @@ def get_cache_key(**kwargs):
     Returns:
          An MD5 encoded key uniquely identified by the key word arguments.
     """
-    key = '__'.join(['{}:{}'.format(item, value) for item, value in six.iteritems(kwargs)])
+    key = '__'.join(['{}:{}'.format(item, value) for item, value in iteritems(kwargs)])
 
     return hashlib.md5(key.encode('utf-8')).hexdigest()
 
@@ -526,31 +555,3 @@ def traverse_pagination(response, endpoint):
         next_page = response.get('next')
 
     return results
-
-
-def get_course_id_from_course_run_id(course_run_id):
-    """
-    Given a course run id, return the corresponding course id.
-
-    Args:
-        course_run_id (str): The course run ID.
-
-    Returns:
-        (str): The course ID.
-    """
-    course_run_key = CourseKey.from_string(course_run_id)
-    return '{org}+{course}'.format(org=course_run_key.org, course=course_run_key.course)
-
-
-def clean_html_for_template_rendering(text):
-    """
-    Given html text that will be rendered as a variable in a template, strip out characters that impact rendering.
-
-    Arguments:
-        text (str): The text to clean.
-
-    Returns:
-        (str): The cleaned text.
-    """
-    # Sometimes there are random new lines between tags that don't render nicely.
-    return text.replace('>\\n<', '><')

@@ -495,6 +495,7 @@ class TestCourseCatalogApi(unittest.TestCase):
         assert resource_id == expected_resource_id
         assert actual_result == expected_result
 
+
 class TestCourseCatalogApiServiceClientInitialization(unittest.TestCase):
     """
     Test initialization of CourseCatalogAPIServiceClient.
@@ -511,17 +512,17 @@ class TestCourseCatalogApiServiceClientInitialization(unittest.TestCase):
 
     @mock.patch('enterprise.api_client.discovery.CatalogIntegration')
     def test_raise_error_object_does_not_exist(self, mock_catalog_integration):
-        mock_catalog_integration_current = mock.Mock(enabled=True)
-        mock_catalog_integration_current.get_service_user.side_effect = ObjectDoesNotExist
-        mock_catalog_integration.current.return_value = mock_catalog_integration_current
+        mock_integration_config = mock.Mock(enabled=True)
+        mock_integration_config.get_service_user.side_effect = ObjectDoesNotExist
+        mock_catalog_integration.current.return_value = mock_integration_config
         with self.assertRaises(ImproperlyConfigured):
             CourseCatalogApiServiceClient()
 
     @mock.patch('enterprise.api_client.discovery.JwtBuilder')
     @mock.patch('enterprise.api_client.discovery.get_edx_api_data')
     @mock.patch('enterprise.api_client.discovery.CatalogIntegration')
-    def test_success(self, mock_catalog_integration, *args): # pylint: disable=unused-argument
-        mock_catalog_integration_current = mock.Mock(enabled=True)
-        mock_catalog_integration_current.get_service_user.return_value = mock.Mock(spec=User)
-        mock_catalog_integration.current.return_value = mock_catalog_integration_current
+    def test_success(self, mock_catalog_integration, *args):  # pylint: disable=unused-argument
+        mock_integration_config = mock.Mock(enabled=True)
+        mock_integration_config.get_service_user.return_value = mock.Mock(spec=User)
+        mock_catalog_integration.current.return_value = mock_integration_config
         CourseCatalogApiServiceClient()

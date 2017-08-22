@@ -38,6 +38,7 @@ from enterprise.messages import add_consent_declined_message
 from enterprise.models import EnterpriseCourseEnrollment, EnterpriseCustomer, EnterpriseCustomerUser
 from enterprise.utils import (
     NotConnectedToOpenEdX,
+    clean_html_for_template_rendering,
     filter_audit_course_modes,
     get_enterprise_customer_for_user,
     get_enterprise_customer_or_404,
@@ -540,11 +541,11 @@ class CourseEnrollmentView(View):
         try:
             course, course_run = CourseCatalogApiServiceClient().get_course_and_course_run(course_run_id)
         except (HttpClientError, ImproperlyConfigured):
-            logger.error('Failed to get metadata for course run: %s', course_run_id)
+            LOGGER.error('Failed to get metadata for course run: %s', course_run_id)
             raise Http404
 
         if course is None or course_run is None:
-            logger.error('Unable to find metadata for course run: %s', course_run_id)
+            LOGGER.error('Unable to find metadata for course run: %s', course_run_id)
             raise Http404
 
         enterprise_customer = get_enterprise_customer_or_404(enterprise_uuid)
@@ -553,7 +554,7 @@ class CourseEnrollmentView(View):
             enrollment_client = EnrollmentApiClient()
             modes = enrollment_client.get_course_modes(course_run_id)
         except HttpClientError:
-            logger.error('Failed to determine available course modes for course run: %s', course_run_id)
+            LOGGER.error('Failed to determine available course modes for course run: %s', course_run_id)
             raise Http404
 
         course_modes = []
@@ -714,15 +715,8 @@ class CourseEnrollmentView(View):
                 break
 
         if not selected_course_mode:
-            return self.get_enterprise_course_enrollment_page(
-                request,
-                enterprise_customer,
-                course,
-                course_run,
-                course_modes,
-                enterprise_course_enrollment,
-                data_sharing_consent
-            )
+            return self.get_enterprise_course_enrollment_page(request, enterprise_customer, course, course_run,
+                                                              course_modes, enterprise_course_enrollment)
 
         user_consent_needed = consent_required(
             request.user,
