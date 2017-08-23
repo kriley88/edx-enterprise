@@ -157,7 +157,7 @@ class DataSharingConsentView(APIView):
             username, course_id, enterprise_customer_uuid = self.get_required_query_params(request)
             exists = consent_exists(username, course_id, enterprise_customer_uuid)
             provided = consent_provided(username, course_id, enterprise_customer_uuid)
-            required = consent_required(request.user, username, course_id, enterprise_customer_uuid)
+            required = consent_required(username, course_id, enterprise_customer_uuid)
         except ConsentAPIRequestError as invalid_request:
             return Response({'error': str(invalid_request)}, status=HTTP_400_BAD_REQUEST)
 
@@ -191,7 +191,7 @@ class DataSharingConsentView(APIView):
         """
         try:
             username, course_id, enterprise_customer_uuid = self.get_required_query_params(request)
-            required = consent_required(request.user, username, course_id, enterprise_customer_uuid)
+            required = consent_required(username, course_id, enterprise_customer_uuid)
             if required:
                 # If and only if the given EnterpriseCustomer requires data sharing consent
                 # for the given course, then, since we've received a POST request, set the
@@ -200,7 +200,7 @@ class DataSharingConsentView(APIView):
                 exists = True
             else:
                 exists = consent_exists(username, course_id, enterprise_customer_uuid)
-            required = consent_required(request.user, username, course_id, enterprise_customer_uuid)
+            required = consent_required(username, course_id, enterprise_customer_uuid)
             provided = consent_provided(username, course_id, enterprise_customer_uuid)
         except ConsentAPIRequestError as invalid_request:
             return Response({'error': str(invalid_request)}, status=HTTP_400_BAD_REQUEST)
@@ -238,7 +238,7 @@ class DataSharingConsentView(APIView):
             self.set_consent_state(False, username, course_id, enterprise_customer_uuid)
             exists = consent_exists(username, course_id, enterprise_customer_uuid)
             provided = consent_provided(username, course_id, enterprise_customer_uuid)
-            required = consent_required(request.user, username, course_id, enterprise_customer_uuid)
+            required = consent_required(username, course_id, enterprise_customer_uuid)
         except ConsentAPIRequestError as invalid_request:
             return Response({'error': str(invalid_request)}, status=HTTP_400_BAD_REQUEST)
 

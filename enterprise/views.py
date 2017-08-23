@@ -218,7 +218,6 @@ class GrantDataSharingPermissions(View):
                 )
                 customer = enrollment.enterprise_customer_user.enterprise_customer
                 if not consent_required(
-                        request.user,
                         enrollment.enterprise_customer_user.username,
                         course_id,
                         customer.uuid
@@ -733,7 +732,6 @@ class CourseEnrollmentView(View):
             )
 
         user_consent_needed = consent_required(
-            request.user,
             enterprise_customer_user.username,
             course_id,
             enterprise_customer.uuid
