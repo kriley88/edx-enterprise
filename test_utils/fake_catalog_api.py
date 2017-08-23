@@ -6,7 +6,7 @@ Fake responses for course catalog api.
 from __future__ import absolute_import, unicode_literals
 
 from six.moves import reduce as six_reduce
-from test_utils import FAKE_UUIDS
+from test_utils import FAKE_UUIDS, populate_enterprise_context
 
 FAKE_COURSE_RUN = {
     'key': 'course-v1:edX+DemoX+Demo_Course',
@@ -122,7 +122,7 @@ FAKE_COURSE = {
 }
 
 FAKE_PROGRAM_RESPONSE1 = {
-    "uuid": "40782a06-1c37-4779-86aa-0a081f014d4d",
+    "uuid": FAKE_UUIDS[2],
     "title": "Program1",
     "subtitle": "",
     "type": "All types",
@@ -135,57 +135,74 @@ FAKE_PROGRAM_RESPONSE1 = {
             "key": "Organization+DNDv2",
             "uuid": "7fe4f68a-abd0-433f-ac9e-1559c12b96e7",
             "title": "Drag and Drop Demos",
-            "course_runs": [
-                {
-                    "key": "course-v1:Organization+DNDv2+T1",
-                    "uuid": "076cb917-06d6-4713-8a6c-c1712ce2e421",
-                    "title": "Drag and Drop Demos",
-                    "image": {},  # skipped
-                    "short_description": None,
-                    "marketing_url": None,
-                    "start": "2015-01-01T00:00:00Z",
-                }
-            ],
-            "owners": [
-                {
-                    "uuid": "cd13a803-c524-4719-ba2c-c1c452b18244",
-                    "key": "Organization",
-                    "name": ""
-                }
-            ],
-            "image": None
+            "course_runs": [],
         },
         {
             "key": "Organization+VD1",
             "uuid": "6d681f1d-856d-4955-8786-a9f3fed6a48f",
             "title": "VectorDraw",
-            "course_runs": [
-                {
-                    "key": "course-v1:Organization+VD1+VD1",
-                    "uuid": "5b949fc1-aa05-42b0-8c9f-8e6114848ae9",
-                    "title": "VectorDraw",
-                    "image": {},  # skipped
-                    "short_description": None,
-                    "marketing_url": None,
-                    "start": "2030-01-01T00:00:00Z",
-                }
-            ],
+            "course_runs": [],
         },
         {
             "key": "course-v1:Organization+ENT-1+T1",
             "uuid": "7f27580c-f475-413b-851a-529ac90f0bb8",
             "title": "Enterprise Tests",
-            "course_runs": [
-                {
-                    "key": "course-v1:Organization+ENT-1+T1",
-                    "uuid": "a2128a84-6e20-4fce-958e-80d9461ef835",
-                    "title": "Enterprise Tests",
-                    "image": {},  # skipped
-                    "short_description": "",
-                    "marketing_url": None
-                }
-            ],
+            "course_runs": [],
         }
+    ],
+    "authoring_organizations": [
+        {
+            "uuid": "12de950c-6fae-49f7-aaa9-778c2fbdae56",
+            "key": "edX",
+            "name": "",
+            "certificate_logo_image_url": None,
+            "description": None,
+            "homepage_url": None,
+            "tags": [],
+            "logo_image_url": None,
+            "marketing_url": None
+        }
+    ],
+    "card_image_url": "http://wowslider.com/sliders/demo-10/data/images/dock.jpg",
+    "is_program_eligible_for_one_click_purchase": False,
+    "overview": "This is a test Program.",
+    "min_hours_effort_per_week": 5,
+    "max_hours_effort_per_week": 10,
+    "video": {
+        "src": "http://www.youtube.com/watch?v=3_yD_cEKoCk",
+        "description": None,
+        "image": None
+    },
+    "expected_learning_items": [],
+    "faq": [],
+    "credit_backing_organizations": [
+        {
+            "uuid": "12de950c-6fae-49f7-aaa9-778c2fbdae56",
+            "key": "edX",
+            "name": "",
+            "certificate_logo_image_url": None,
+            "description": None,
+            "homepage_url": None,
+            "tags": [],
+            "logo_image_url": None,
+            "marketing_url": None
+        }
+    ],
+    "corporate_endorsements": [],
+    "job_outlook_items": [],
+    "individual_endorsements": [],
+    "languages": [
+        "en-us"
+    ],
+    "transcript_languages": [
+        "en-us"
+    ],
+    "subjects": [],
+    "price_ranges": [],
+    "staff": [],
+    "credit_redemption_overview": "This is a test Program.",
+    "applicable_seat_types": [
+        "audit"
     ],
 }
 
@@ -344,6 +361,18 @@ FAKE_COURSE_RUNS_RESPONSE = [
     }
 ]
 
+FAKE_PROGRAM_RESPONSE1_WITH_ENTERPRISE_CONTEXT = FAKE_PROGRAM_RESPONSE1
+FAKE_PROGRAM_RESPONSE2_WITH_ENTERPRISE_CONTEXT = FAKE_PROGRAM_RESPONSE2
+populate_enterprise_context(FAKE_PROGRAM_RESPONSE1_WITH_ENTERPRISE_CONTEXT, {
+    'enterprise_id': FAKE_UUIDS[0],
+    'program_uuid': FAKE_UUIDS[2],
+    'tpa_hint': 'saml-testshib',
+})
+populate_enterprise_context(FAKE_PROGRAM_RESPONSE2_WITH_ENTERPRISE_CONTEXT, {
+    'enterprise_id': FAKE_UUIDS[0],
+    'program_uuid': FAKE_UUIDS[2],
+    'tpa_hint': 'saml-testshib',
+})
 FAKE_PROGRAM_RESPONSES = {
     FAKE_PROGRAM_RESPONSE1["uuid"]: FAKE_PROGRAM_RESPONSE1,
     FAKE_PROGRAM_RESPONSE2["uuid"]: FAKE_PROGRAM_RESPONSE2,

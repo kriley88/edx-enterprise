@@ -142,7 +142,7 @@ class EnterpriseCustomerViewSet(EnterpriseReadOnlyModelViewSet):
         serializer = serializers.EnterpriseCatalogCoursesReadOnlySerializer(courses)
 
         # Add enterprise related context for the courses.
-        serializer.update_enterprise_courses(enterprise_customer, enterprise_customer.catalog)
+        serializer.update_enterprise_courses(enterprise_customer, catalog_id=enterprise_customer.catalog)
         return get_paginated_response(serializer.data, request)
 
 
@@ -166,21 +166,6 @@ class EnterpriseCourseEnrollmentViewSet(EnterpriseReadWriteModelViewSet):
         if self.request.method in ('GET', ):
             return serializers.EnterpriseCourseEnrollmentReadOnlySerializer
         return serializers.EnterpriseCourseEnrollmentWriteSerializer
-
-
-class EnterpriseCustomerCatalogViewSet(EnterpriseReadOnlyModelViewSet):
-    """
-    API views for the ``enterprise-customer-catalog`` API endpoint.
-    """
-
-    queryset = models.EnterpriseCustomerCatalog.objects.all()
-    serializer_class = serializers.EnterpriseCustomerCatalogSerializer
-
-    FIELDS = (
-        'uuid', 'enterprise_customer', 'query',
-    )
-    filter_fields = FIELDS
-    ordering_fields = FIELDS
 
 
 class SiteViewSet(EnterpriseReadOnlyModelViewSet):
@@ -299,16 +284,24 @@ class EnterpriseCustomerEntitlementViewSet(EnterpriseReadOnlyModelViewSet):
     ordering_fields = FIELDS
 
 
-class EnterpriseCustomerCatalogApiViewSet(EnterpriseWrapperApiViewSet):
+class EnterpriseCustomerCatalogViewSet(EnterpriseReadOnlyModelViewSet):
     """
     API Views for performing search through course discovery at the ``enterprise-catalogs`` API endpoint.
     """
 
     permission_classes = (permissions.IsAuthenticated, IsStaffUserOrLinkedToCommonEnterprise,)
-    serializer_class = serializers.EnterpriseCustomerCatalogApiReadOnlySerializer
+    serializer_class = serializers.EnterpriseCustomerCatalogSerializer
     cross_check_model = models.EnterpriseCustomerCatalog
 
-    def retrieve(self, request, pk=None):  # pylint: disable=invalid-name
+    queryset = models.EnterpriseCustomerCatalog.objects.all()
+
+    FIELDS = (
+        'uuid', 'enterprise_customer', 'query',
+    )
+    filter_fields = FIELDS
+    ordering_fields = FIELDS
+
+    def retrieve(self, request, *args, **kwargs):  # pylint: disable=invalid-name
         """
         DRF view to list all content from course discovery that matches the EnterpriseCustomerCatalog's query.
 
@@ -319,19 +312,16 @@ class EnterpriseCustomerCatalogApiViewSet(EnterpriseWrapperApiViewSet):
         Returns:
             (Response): DRF response object containing a paginated result of searching the course discovery service.
         """
+        uuid = kwargs.get('pk')
         query = request.GET.copy()
-        if 'programs' in request.path:
-            # For the Programs endpoint, just search course discovery for the Program's passed in UUID.
-            query['q'] = pk
-        else:
-            try:
-                query['q'] = models.EnterpriseCustomerCatalog.objects.get(uuid=pk).query
-            except models.EnterpriseCustomerCatalog.DoesNotExist:
-                query['q'] = ''
-                LOGGER.warning(
-                    "No EnterpriseCustomerCatalog with uuid '{uuid}'; "
-                    "defaulting to empty query string.".format(uuid=pk)
-                )
+        try:
+            query['q'] = models.EnterpriseCustomerCatalog.objects.get(uuid=uuid).query
+        except models.EnterpriseCustomerCatalog.DoesNotExist:
+            query['q'] = ''
+            LOGGER.warning(
+                "No EnterpriseCustomerCatalog with uuid '{uuid}'; "
+                "defaulting to empty query string.".format(uuid=uuid)
+            )
 
         catalog_api = CourseCatalogApiClient(request.user)
         search_results = catalog_api.get_paginated_search_results(query)
@@ -341,23 +331,67 @@ class EnterpriseCustomerCatalogApiViewSet(EnterpriseWrapperApiViewSet):
             error_message="No search results returned with query '{query}'.".format(query=query)
         )
 
-        serializer = self.serializer_class(search_results)
+        serializer = serializers.EnterpriseCustomerCatalogReadOnlySerializer(search_results)
         return get_paginated_response(serializer.data, request)
 
-    def list(self, request):
+    def list(self, request, *args, **kwargs):
         """
-        DRF view to list all content from course discovery.
+        DRF view to list all catalogs available to the learner.
 
         Arguments:
             request (HttpRequest): Current request.
 
         Returns:
-            (Response): DRF response object containing the result of searching the course discovery service.
+            (Response): DRF response object containing all catalogs available to the learner.
+        """
+        self.queryset = self.queryset.filter(
+            enterprise_customer__enterprise_customer_users__user_id=request.user.id
+        )
+        return super(EnterpriseCustomerCatalogViewSet, self).list(request, *args, **kwargs)
+
+
+class EnterpriseProgramApiViewSet(EnterpriseWrapperApiViewSet):
+    """
+    API View encapsulating Course Discovery's Program detail endpoint at our ``programs`` API endpoint.
+    """
+
+    permission_classes = (permissions.IsAuthenticated, IsStaffUserOrLinkedToCommonEnterprise,)
+    cross_check_model = models.EnterpriseCustomerCatalog
+    serializer = serializers.EnterpriseProgramApiReadOnlySerializer
+
+    @method_decorator(decorators.enterprise_customer_required)
+    def retrieve(self, request, enterprise_customer, pk=None):  # pylint: disable=invalid-name
+        """
+        DRF view to list the program from course discovery that has the given UUID.
+
+        Arguments:
+            request (HttpRequest): Current request.
+            pk (string): UUID string of the Program to retrieve.
+
+        Returns:
+            (Response): DRF response object containing the program with the given UUID.
         """
         catalog_api = CourseCatalogApiClient(request.user)
-        search_results = catalog_api.get_paginated_search_results(request.GET)
-        self.ensure_data_exists(request, search_results)
-        serializer = self.serializer_class(search_results)
+        program_results = catalog_api.get_program_by_uuid(pk)
+        self.ensure_data_exists(request, program_results)
+        serializer = self.serializer(program_results)
+        serializer.update_enterprise_courses(enterprise_customer, course_container_key='courses', program_uuid=pk)
+        return Response(serializer.data)
+
+    def list(self, request):
+        """
+        DRF view to list all programs from course discovery.
+
+        Arguments:
+            request (HttpRequest): Current request.
+
+        Returns:
+            (Response): DRF response object containing a paginated list of program results.
+        """
+        catalog_api = CourseCatalogApiClient(request.user)
+        program_results = catalog_api.get_paginated_programs(request.GET)
+        self.ensure_data_exists(request, program_results)
+        serializer = serializers.EnterpriseCustomerCatalogReadOnlySerializer(program_results)
         return get_paginated_response(serializer.data, request)
 
 
@@ -381,7 +415,7 @@ class EnterpriseCourseCatalogViewSet(EnterpriseWrapperApiViewSet):
         catalog_api = CourseCatalogApiClient(request.user)
         catalogs = catalog_api.get_paginated_catalogs(request.GET)
         self.ensure_data_exists(request, catalogs)
-        serializer = serializers.EnterpriseCustomerCatalogApiReadOnlySerializer(catalogs)
+        serializer = serializers.EnterpriseCustomerCatalogReadOnlySerializer(catalogs)
         return get_paginated_response(serializer.data, request)
 
     def retrieve(self, request, pk=None):  # pylint: disable=invalid-name
@@ -433,5 +467,5 @@ class EnterpriseCourseCatalogViewSet(EnterpriseWrapperApiViewSet):
         serializer = serializers.EnterpriseCatalogCoursesReadOnlySerializer(courses)
 
         # Add enterprise related context for the courses.
-        serializer.update_enterprise_courses(enterprise_customer, pk)
+        serializer.update_enterprise_courses(enterprise_customer, catalog_id=pk)
         return get_paginated_response(serializer.data, request)

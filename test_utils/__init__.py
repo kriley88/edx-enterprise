@@ -58,6 +58,16 @@ def create_items(factory, items):
         factory.create(**item)
 
 
+def populate_enterprise_context(response, context):
+    """
+    Populate a fake response with any necessary Enterprise context for testing purposes.
+
+    :param response: The response to populate with enterprise context.
+    """
+    for course in response['courses']:
+        course.update(context)
+
+
 @mark.django_db
 class APITest(APITestCase):
     """

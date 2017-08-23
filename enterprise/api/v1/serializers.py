@@ -9,7 +9,8 @@ from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
 
-from enterprise import models, utils
+from enterprise import models
+from enterprise.api.v1.mixins import EnterpriseCourseContextSerializerMixin
 
 
 class ImmutableStateSerializer(serializers.Serializer):
@@ -261,11 +262,80 @@ class EnterpriseCustomerUserEntitlementSerializer(ImmutableStateSerializer):
     data_sharing_consent = UserDataSharingConsentAuditSerializer(many=True, read_only=True)
 
 
-class EnterpriseCustomerCatalogApiReadOnlySerializer(ResponsePaginationSerializer):
+class EnterpriseCustomerCatalogReadOnlySerializer(ResponsePaginationSerializer):
     """
     Paginated serializer for Enterprise Catalog API responses.
     """
     pass
+
+
+class EnterpriseProgramApiReadOnlySerializer(ImmutableStateSerializer, EnterpriseCourseContextSerializerMixin):
+    """
+    Serializer for detailed Programs responses.
+    """
+
+    uuid = serializers.UUIDField(
+        read_only=True,
+        help_text=_('UUID of the Enterprise Program.'),
+    )
+    title = serializers.CharField(
+        max_length=255,
+        help_text=_('The user-facing display title for this Program.'),
+    )
+    subtitle = serializers.CharField(
+        max_length=255,
+        help_text=_('A brief, descriptive subtitle for the Program.'),
+    )
+    type = serializers.CharField(
+        max_length=32,
+    )
+    status = serializers.CharField(
+        max_length=24,
+        help_text=_('The lifecycle status of this Program.'),
+    )
+    marketing_slug = serializers.SlugField(
+        max_length=255,
+        help_text=_("Slug used to generate links to the Enterprise's marketing site."),
+    )
+    marketing_url = serializers.URLField(
+        help_text=_("URL to the Enterprise's marketing site."),
+    )
+    banner_image = serializers.DictField(
+        help_text=_("The Enterprise's banner image for this Program."),
+    )
+    courses = serializers.ListField(
+        help_text=_('List of courses in the Program.'),
+    )
+    authoring_organizations = serializers.ListField(
+        help_text=_('The organizations involved in authoring the courses in the Program.'),
+    )
+    card_image_url = serializers.URLField(
+        help_text=_('Image used for discovery cards'),
+    )
+    is_program_eligible_for_one_click_purchase = serializers.BooleanField(  # pylint: disable=invalid-name
+        help_text=_('Allow courses in this program to be purchased in a single transaction'),
+    )
+    overview = serializers.CharField(
+        help_text=_('Overview of the Program.'),
+    )
+    min_hours_effort_per_week = serializers.IntegerField()
+    max_hours_effort_per_week = serializers.IntegerField()
+    video = serializers.DictField()
+    expected_learning_items = serializers.ListField()
+    faq = serializers.ListField()
+    credit_backing_organizations = serializers.ListField()
+    corporate_endorsements = serializers.ListField()
+    job_outlook_items = serializers.ListField()
+    individual_endorsements = serializers.ListField()
+    languages = serializers.ListField()
+    transcript_languages = serializers.ListField()
+    subjects = serializers.ListField()
+    price_ranges = serializers.ListField()
+    staff = serializers.ListField()
+    credit_redemption_overview = serializers.CharField(
+        help_text=_('The description of credit redemption for courses in program'),
+    )
+    applicable_seat_types = serializers.ListField()
 
 
 class CourseCatalogApiResponseReadOnlySerializer(ImmutableStateSerializer):
@@ -286,113 +356,8 @@ class CourseCatalogApiResponseReadOnlySerializer(ImmutableStateSerializer):
     )
 
 
-class EnterpriseCatalogCoursesReadOnlySerializer(ResponsePaginationSerializer):
+class EnterpriseCatalogCoursesReadOnlySerializer(ResponsePaginationSerializer, EnterpriseCourseContextSerializerMixin):
     """
     Serializer for enterprise customer catalog courses.
     """
-
-    def update_enterprise_courses(self, enterprise_customer, catalog_id):
-        """
-        This method adds enterprise specific metadata for each course.
-
-        We are adding following field in all the courses.
-            tpa_hint: a string for identifying Identity Provider.
-        """
-        courses = []
-
-        global_context = {
-            'tpa_hint': enterprise_customer and enterprise_customer.identity_provider,
-            'enterprise_id': enterprise_customer and enterprise_customer.uuid,
-            'catalog_id': catalog_id,
-        }
-
-        for course in self.data['results']:
-            courses.append(
-                self.update_course(course, catalog_id, enterprise_customer, global_context)
-            )
-        self.data['results'] = courses
-
-    def update_course(self, course, catalog_id, enterprise_customer, global_context):
-        """
-        Update course metadata of the given course and return updated course.
-
-        Arguments:
-            course (dict): Course Metadata returned by course catalog API
-            catalog_id (int): identifier of the catalog given course belongs to.
-            enterprise_customer (EnterpriseCustomer): enterprise customer instance.
-            global_context (dict): Global attributes that should be added to all the courses.
-
-        Returns:
-            (dict): Updated course metadata
-        """
-        # extract course runs from course metadata and
-        # Replace course's course runs with the updated course runs
-        course['course_runs'] = self.update_course_runs(
-            course_runs=course.get('course_runs') or [],
-            catalog_id=catalog_id,
-            enterprise_customer=enterprise_customer,
-        )
-
-        # Update marketing urls in course metadata to include enterprise related info.
-        if course.get('marketing_url'):
-            course.update({
-                "marketing_url": utils.update_query_parameters(
-                    course.get('marketing_url'),
-                    {
-                        'tpa_hint': enterprise_customer and enterprise_customer.identity_provider,
-                        'enterprise_id': enterprise_customer and enterprise_customer.uuid,
-                        'catalog_id': catalog_id,
-                    },
-                ),
-            })
-
-        # now add global context to the course.
-        course.update(global_context)
-        return course
-
-    def update_course_runs(self, course_runs, catalog_id, enterprise_customer):
-        """
-        Update Marketing urls in course metadata and return updated course.
-
-        Arguments:
-            course_runs (list): List of course runs.
-            catalog_id (int): Course catalog identifier.
-            enterprise_customer (EnterpriseCustomer): enterprise customer instance.
-
-        Returns:
-            (dict): Dictionary containing updated course metadata.
-        """
-        updated_course_runs = []
-
-        query_parameters = {
-            'tpa_hint': enterprise_customer and enterprise_customer.identity_provider,
-            'enterprise_id': enterprise_customer and enterprise_customer.uuid,
-            'catalog_id': catalog_id,
-        }
-
-        for course_run in course_runs:
-            track_selection_url = utils.get_course_track_selection_url(
-                course_run=course_run,
-                query_parameters=query_parameters,
-            )
-
-            enrollment_url = enterprise_customer.get_course_enrollment_url(course_run.get('key'))
-
-            # Add/update track selection url in course run metadata.
-            course_run.update({
-                'track_selection_url': track_selection_url,
-                'enrollment_url': enrollment_url
-            })
-
-            # Update marketing urls in course metadata to include enterprise related info.
-            if course_run.get('marketing_url'):
-                course_run.update({
-                    "marketing_url": utils.update_query_parameters(
-                        course_run.get('marketing_url'), query_parameters
-                    ),
-                })
-
-            # Add updated course run to the list.
-            updated_course_runs.append(course_run)
-
-        return updated_course_runs
+    pass

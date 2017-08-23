@@ -27,11 +27,11 @@ CATALOGS_COURSES_ENDPOINT = reverse('catalogs-courses', (1, ))
 ENTERPRISE_CATALOGS_LIST_ENDPOINT = reverse('enterprise-catalogs-list')
 ENTERPRISE_CATALOGS_DETAIL_ENDPOINT = reverse('enterprise-catalogs-detail', (FAKE_UUIDS[1],))
 ENTERPRISE_COURSE_ENROLLMENT_LIST_ENDPOINT = reverse('enterprise-course-enrollment-list')
-ENTERPRISE_CUSTOMER_CATALOG_LIST_ENDPOINT = reverse('enterprise-customer-catalog-list')
 ENTERPRISE_CUSTOMER_COURSES_ENDPOINT = reverse('enterprise-customer-courses', (FAKE_UUIDS[0],))
 ENTERPRISE_CUSTOMER_ENTITLEMENT_LIST_ENDPOINT = reverse('enterprise-customer-entitlement-list')
 ENTERPRISE_CUSTOMER_LIST_ENDPOINT = reverse('enterprise-customer-list')
 ENTERPRISE_LEARNER_LIST_ENDPOINT = reverse('enterprise-learner-list')
+PROGRAMS_LIST_ENDPOINT = reverse('programs-list')
 PROGRAMS_DETAIL_ENDPOINT = reverse('programs-detail', (FAKE_UUIDS[3],))
 SITE_LIST_ENDPOINT = reverse('site-list')
 USER_DATA_SHARING_CONSENT_LIST_ENDPOINT = reverse('user-data-sharing-consent-list')
@@ -220,21 +220,6 @@ class TestEnterpriseAPIViews(APITest):
                 'course_id': 'course-v1:edX+DemoX+DemoCourse',
             }],
         ),
-        (
-            factories.EnterpriseCustomerCatalogFactory,
-            ENTERPRISE_CUSTOMER_CATALOG_LIST_ENDPOINT,
-            itemgetter('enterprise_customer'),
-            [{
-                'uuid': FAKE_UUIDS[0],
-                'enterprise_customer__uuid': FAKE_UUIDS[1],
-                'query': 'querystring',
-            }],
-            [{
-                'uuid': FAKE_UUIDS[0],
-                'enterprise_customer': FAKE_UUIDS[1],
-                'query': 'querystring',
-            }]
-        )
     )
     @ddt.unpack
     def test_api_views(self, factory, url, sorting_key, model_items, expected_json):
@@ -244,7 +229,38 @@ class TestEnterpriseAPIViews(APITest):
         self.create_items(factory, model_items)
         response = self.client.get(settings.TEST_SERVER + url)
         response = self.load_json(response.content)
+        assert sorted(expected_json, key=sorting_key) == sorted(response['results'], key=sorting_key)
 
+    @ddt.data(
+        (
+            itemgetter('enterprise_customer'),
+            [{
+                'uuid': FAKE_UUIDS[1],
+                'enterprise_customer': FAKE_UUIDS[0],
+                'query': '',
+            }]
+        ),
+    )
+    @ddt.unpack
+    def test_enterprise_customer_catalog_model_list_view(self, sorting_key, expected_json):
+        """
+        ``enterprise-catalogs``'s list endpoint should serialize the ``EnterpriseCustomerCatalog`` model.
+        """
+        self.user.is_staff = True
+        self.user.save()
+        enterprise_customer = factories.EnterpriseCustomerFactory(
+            uuid=FAKE_UUIDS[0]
+        )
+        factories.EnterpriseCustomerUserFactory(
+            user_id=self.user.id,
+            enterprise_customer=enterprise_customer,
+        )
+        factories.EnterpriseCustomerCatalogFactory(
+            uuid=FAKE_UUIDS[1],
+            enterprise_customer=enterprise_customer,
+        )
+        response = self.client.get(settings.TEST_SERVER + ENTERPRISE_CATALOGS_LIST_ENDPOINT)
+        response = self.load_json(response.content)
         assert sorted(expected_json, key=sorting_key) == sorted(response['results'], key=sorting_key)
 
     @ddt.data(
@@ -668,18 +684,6 @@ class TestEnterpriseAPIViews(APITest):
                 ],
             },
         ),
-        (
-            PROGRAMS_DETAIL_ENDPOINT,
-            True,
-            True,
-            'uses programs uuid from query parameters for search for programs endpoint',
-            {
-                "count": 1,
-                "next": None,
-                "previous": None,
-                "results": [fake_catalog_api.FAKE_SEARCH_ALL_PROGRAM_RESULT],
-            },
-        ),
     )
     @ddt.unpack
     def test_enterprise_customer_catalogs_detail(self, url, is_staff, has_existing_catalog, querystring,
@@ -722,70 +726,147 @@ class TestEnterpriseAPIViews(APITest):
 
     @ddt.data(
         (
-            ENTERPRISE_CATALOGS_LIST_ENDPOINT,
+            PROGRAMS_DETAIL_ENDPOINT,
             False,
             False,
             {},
-            {'detail': "User must be a staff user or "
-                       "associated with the endpoint's appointed common Enterprise Customer."},
+            {
+                'detail': "User must be a staff user or "
+                          "associated with the endpoint's appointed common Enterprise Customer."
+            },
         ),
         (
-            ENTERPRISE_CATALOGS_LIST_ENDPOINT,
+            PROGRAMS_DETAIL_ENDPOINT,
+            False,
+            True,
+            fake_catalog_api.FAKE_PROGRAM_RESPONSE1,
+            fake_catalog_api.FAKE_PROGRAM_RESPONSE1_WITH_ENTERPRISE_CONTEXT,
+        ),
+        (
+            PROGRAMS_DETAIL_ENDPOINT,
+            True,
+            False,
+            {},
+            {'detail': "User api_worker is not associated with an EnterpriseCustomer."},
+        ),
+        (
+            PROGRAMS_DETAIL_ENDPOINT,
+            True,
+            True,
+            fake_catalog_api.FAKE_PROGRAM_RESPONSE1,
+            fake_catalog_api.FAKE_PROGRAM_RESPONSE1_WITH_ENTERPRISE_CONTEXT,
+        ),
+    )
+    @ddt.unpack
+    @mock.patch('enterprise.models.configuration_helpers')
+    def test_enterprise_programs_detail(
+            self,
+            url,
+            is_staff,
+            has_existing_catalog,
+            mocked_program,
+            expected_program,
+            mock_configuration_helpers,
+    ):  # pylint: disable=unused-argument
+        """
+        The ``programs`` detail endpoint should return correct results from course discovery,
+        with enterprise context in courses.
+        """
+        enterprise_customer = factories.EnterpriseCustomerFactory(
+            uuid=FAKE_UUIDS[0]
+        )
+        factories.EnterpriseCustomerIdentityProviderFactory(
+            enterprise_customer=enterprise_customer,
+            provider_id='saml-testshib',
+        )
+        if is_staff:
+            self.user.is_staff = True
+            self.user.save()
+        if has_existing_catalog:
+            factories.EnterpriseCustomerUserFactory(
+                user_id=self.user.id,
+                enterprise_customer=enterprise_customer
+            )
+            factories.EnterpriseCustomerCatalogFactory(
+                uuid=FAKE_UUIDS[1],
+                enterprise_customer=enterprise_customer,
+            )
+        with mock.patch('enterprise.api.v1.views.CourseCatalogApiClient') as mock_catalog_api_client:
+            mock_catalog_api_client.return_value = mock.Mock(
+                get_program_by_uuid=mock.Mock(return_value=mocked_program),
+            )
+            response = self.client.get(url)
+            response = self.load_json(response.content)
+
+            assert response == expected_program
+
+    @ddt.data(
+        (
+            PROGRAMS_LIST_ENDPOINT,
+            False,
+            False,
+            {},
+            {
+                'detail': "User must be a staff user or "
+                          "associated with the endpoint's appointed common Enterprise Customer."
+            },
+        ),
+        (
+            PROGRAMS_LIST_ENDPOINT,
             False,
             True,
             {
-                'count': 3,
-                'next': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page=3&page_size=1',
-                'previous': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page_size=1',
-                'results': [fake_catalog_api.FAKE_SEARCH_ALL_COURSE_RESULT],
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": ['results'],
             },
             {
-                'count': 3,
-                'next': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page=3&page_size=1',
-                'previous': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page_size=1',
-                'results': [fake_catalog_api.FAKE_SEARCH_ALL_COURSE_RESULT],
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": ['results'],
             },
         ),
         (
-            ENTERPRISE_CATALOGS_LIST_ENDPOINT,
+            PROGRAMS_LIST_ENDPOINT,
             True,
             False,
             {
-                'count': 3,
-                'next': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page=3&page_size=1',
-                'previous': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page_size=1',
-                'results': [fake_catalog_api.FAKE_SEARCH_ALL_COURSE_RESULT],
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": ['results'],
             },
             {
-                'count': 3,
-                'next': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page=3&page_size=1',
-                'previous': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page_size=1',
-                'results': [fake_catalog_api.FAKE_SEARCH_ALL_COURSE_RESULT],
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": ['results'],
             },
         ),
         (
-            ENTERPRISE_CATALOGS_LIST_ENDPOINT,
+            PROGRAMS_LIST_ENDPOINT,
             True,
             True,
             {
-                'count': 3,
-                'next': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page=3&page_size=1',
-                'previous': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page_size=1',
-                'results': [fake_catalog_api.FAKE_SEARCH_ALL_COURSE_RESULT],
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": ['results'],
             },
             {
-                'count': 3,
-                'next': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page=3&page_size=1',
-                'previous': 'http://testserver/enterprise/api/v1/enterprise-catalogs/?page_size=1',
-                'results': [fake_catalog_api.FAKE_SEARCH_ALL_COURSE_RESULT],
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": ['results'],
             },
         ),
     )
     @ddt.unpack
-    def test_enterprise_customer_catalogs_list(self, url, is_staff, has_existing_catalog, mocked_search_results,
-                                               expected_catalogs):
+    def test_enterprise_programs_list(self, url, is_staff, has_existing_catalog, mocked_programs, expected_programs):
         """
-        Make sure the Enterprise Customer's Catalog view returns correctly paginated data.
+        The ``programs`` list endpoint should return correctly paginated results from course discovery.
         """
         enterprise_customer = factories.EnterpriseCustomerFactory(
             uuid=FAKE_UUIDS[0]
@@ -801,16 +882,15 @@ class TestEnterpriseAPIViews(APITest):
             factories.EnterpriseCustomerCatalogFactory(
                 uuid=FAKE_UUIDS[1],
                 enterprise_customer=enterprise_customer,
-                query=''
             )
         with mock.patch('enterprise.api.v1.views.CourseCatalogApiClient') as mock_catalog_api_client:
             mock_catalog_api_client.return_value = mock.Mock(
-                get_paginated_search_results=mock.Mock(return_value=mocked_search_results),
+                get_paginated_programs=mock.Mock(return_value=mocked_programs),
             )
             response = self.client.get(url)
             response = self.load_json(response.content)
 
-            assert response == expected_catalogs
+            assert response == expected_programs
 
     @ddt.data(
         (
