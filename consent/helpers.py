@@ -5,9 +5,6 @@ Helper functions for the Consent application.
 
 from __future__ import absolute_import, unicode_literals
 
-from consent.models import DataSharingConsent
-
-from enterprise.models import EnterpriseCustomer
 from enterprise.utils import get_enterprise_customer
 
 
@@ -53,6 +50,9 @@ def get_data_sharing_consent(username, course_id, enterprise_customer_uuid):
     :param enterprise_customer_uuid: The consent requester.
     :return: The data sharing consent object, or None if the enterprise customer for the given UUID does not exist.
     """
+    # Prevent circular imports.
+    EnterpriseCustomer = apps.get_model('enterprise', 'EnterpriseCustomer')  # pylint: disable=invalid-name
+    DataSharingConsent = apps.get_model('consent', 'DataSharingConsent')  # pylint: disable=invalid-name
     try:
         return DataSharingConsent.objects.proxied_get(
             username=username,

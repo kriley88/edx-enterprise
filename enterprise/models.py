@@ -11,6 +11,7 @@ from uuid import uuid4
 import six
 from simple_history.models import HistoricalRecords
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
@@ -387,8 +388,12 @@ class EnterpriseCustomerUser(TimeStampedModel):
 
         """
         # Check if Enterprise Learner consents to data sharing and store the boolean result
-        learner_consent_state = self.data_sharing_consent.first()
-        learner_consent_enabled = learner_consent_state and learner_consent_state.enabled
+        DataSharingConsent = apps.get_model('consent', 'DataSharingConsent')  # pylint: disable=invalid-name
+        learner_consent_enabled = DataSharingConsent.objects.filter(
+            enterprise_customer=self.enterprise_customer,
+            username=self.username,
+            granted=True,
+        ).exists()
 
         entitlements = self.enterprise_customer.enterprise_customer_entitlements
 

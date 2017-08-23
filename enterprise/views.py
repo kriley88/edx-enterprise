@@ -43,7 +43,6 @@ from enterprise.utils import (
     get_enterprise_customer_for_user,
     get_enterprise_customer_or_404,
     get_enterprise_customer_user,
-    clean_html_for_template_rendering,
 )
 from six.moves.urllib.parse import urlencode, urljoin  # pylint: disable=import-error
 
@@ -587,8 +586,16 @@ class CourseEnrollmentView(View):
 
         return enterprise_customer, course, course_run, course_modes
 
-    def get_enterprise_course_enrollment_page(self, request, enterprise_customer, course, course_run, course_modes,
-                                              enterprise_course_enrollment):
+    def get_enterprise_course_enrollment_page(
+            self,
+            request,
+            enterprise_customer,
+            course,
+            course_run,
+            course_modes,
+            enterprise_course_enrollment,
+            data_sharing_consent
+    ):
         """
         Render enterprise specific course track selection page.
         """
@@ -633,7 +640,7 @@ class CourseEnrollmentView(View):
         # Add a message to the message display queue if the learner
         # has gone through the data sharing consent flow and declined
         # to give data sharing consent.
-        if enterprise_course_enrollment and not enterprise_course_enrollment.consent_granted:
+        if enterprise_course_enrollment and not data_sharing_consent.granted:
             add_consent_declined_message(request, enterprise_customer, course_run)
 
         context_data = {
@@ -715,8 +722,15 @@ class CourseEnrollmentView(View):
                 break
 
         if not selected_course_mode:
-            return self.get_enterprise_course_enrollment_page(request, enterprise_customer, course, course_run,
-                                                              course_modes, enterprise_course_enrollment)
+            return self.get_enterprise_course_enrollment_page(
+                request,
+                enterprise_customer,
+                course,
+                course_run,
+                course_modes,
+                enterprise_course_enrollment,
+                data_sharing_consent
+            )
 
         user_consent_needed = consent_required(
             request.user,
@@ -830,5 +844,12 @@ class CourseEnrollmentView(View):
             # info page.
             return redirect(LMS_COURSE_URL.format(course_id=course_id))
 
-        return self.get_enterprise_course_enrollment_page(request, enterprise_customer, course, course_run, modes,
-                                                          enterprise_course_enrollment)
+        return self.get_enterprise_course_enrollment_page(
+            request,
+            enterprise_customer,
+            course,
+            course_run,
+            modes,
+            enterprise_course_enrollment,
+            data_sharing_consent,
+        )

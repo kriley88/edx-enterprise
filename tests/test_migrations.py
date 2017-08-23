@@ -95,7 +95,13 @@ class MigrateToNewDataSharingConsentTest(MigrationTestCase):
         Set up EnterpriseCourseEnrollment and UserDataSharingConsentAudit with some data.
         """
         super(MigrateToNewDataSharingConsentTest, self).setUp()
-        self.enterprise_customer_user = factories.EnterpriseCustomerUserFactory()
+        self.user = factories.UserFactory(
+            username='bob',
+            id=1
+        )
+        self.enterprise_customer_user = factories.EnterpriseCustomerUserFactory(
+            user_id=1
+        )
         self.enterprise_course_enrollment = factories.EnterpriseCourseEnrollmentFactory(
             enterprise_customer_user=self.enterprise_customer_user
         )
@@ -145,3 +151,23 @@ class MigrateToNewDataSharingConsentTest(MigrationTestCase):
             self.assertTrue(data_sharing_consent.granted)
         else:
             self.assertFalse(data_sharing_consent.granted)
+
+    @ignore_warning(DeprecationWarning)
+    def test_duplicate_consent_doesnt_cause_error(self):
+        """
+        An existing ``DataSharingConsent`` row shouldn't cause a migration error -- it should update accordingly.
+        """
+        DataSharingConsent.objects.create(
+            username=self.enterprise_customer_user.username,
+            course_id=self.enterprise_course_enrollment.course_id,
+            enterprise_customer=self.enterprise_customer_user.enterprise_customer,
+            granted=False,
+        )
+
+        self.enterprise_course_enrollment.consent_granted = True
+        self.enterprise_course_enrollment.save()
+
+        self.migrate_to_dest()
+
+        data_sharing_consent = DataSharingConsent.objects.all().first()
+        assert data_sharing_consent.granted

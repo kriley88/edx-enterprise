@@ -14,29 +14,35 @@ new data, we simply leave it to someone with DB access to manage things based on
 
 from __future__ import unicode_literals
 
-from consent.models import DataSharingConsent
-
 from django.db import migrations
 
-from enterprise.models import EnterpriseCourseEnrollment, UserDataSharingConsentAudit
 
 
 def populate_data_sharing_consent(apps, schema_editor):
     """
     Populates the ``DataSharingConsent`` model with the ``enterprise`` application's consent data.
 
-    Consent data from the ``enterprise`` application come from the ``EnterpriseCourseEnrollment`` and
-    ``UserDataSharingConsentAudit`` models.
-
-    We check the ``EnterpriseCourseEnrollment`` first, and only check ``UserDataSharingConsentAudit`` in case
-    consent information isn't available in ``EnterpriseCourseEnrollment``.
+    Consent data from the ``enterprise`` application come from the ``EnterpriseCourseEnrollment`` model.
     """
+    DataSharingConsent = apps.get_model('consent', 'DataSharingConsent')
+    EnterpriseCourseEnrollment = apps.get_model('enterprise', 'EnterpriseCourseEnrollment')
+    User = apps.get_model('auth', 'User')
     for enrollment in EnterpriseCourseEnrollment.objects.all():
-        data_sharing_consent = DataSharingConsent.objects.create(
+        user = User.objects.get(pk=enrollment.enterprise_customer_user.user_id)
+        data_sharing_consent, __ = DataSharingConsent.objects.get_or_create(
+            username=user.username,
             enterprise_customer=enrollment.enterprise_customer_user.enterprise_customer,
-            course_id=enrollment.course_id
+            course_id=enrollment.course_id,
         )
-        data_sharing_consent.granted = enrollment.consent_available
+        if enrollment.consent_granted is not None:
+            data_sharing_consent.granted = enrollment.consent_granted
+        else:
+            # Check UDSCA instead.
+            consent_state = enrollment.enterprise_customer_user.data_sharing_consent.first()
+            if consent_state is not None:
+                data_sharing_consent.granted = consent_state.state in ['enabled', 'external']
+            else:
+                data_sharing_consent.granted = False
         data_sharing_consent.save()
 
 
@@ -44,7 +50,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         # Make sure enterprise models (source) are available.
-        ('enterprise', '0023_audit_data_reporting_flag'),
+        ('enterprise', '0024_enterprisecustomercatalog_historicalenterprisecustomercatalog'),
         # Make sure consent models (target) are available.
         ('consent', '0001_initial'),
     ]
