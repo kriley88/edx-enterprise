@@ -17,7 +17,6 @@ from __future__ import unicode_literals
 from django.db import migrations
 
 
-
 def populate_data_sharing_consent(apps, schema_editor):
     """
     Populates the ``DataSharingConsent`` model with the ``enterprise`` application's consent data.

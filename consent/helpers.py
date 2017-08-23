@@ -5,6 +5,8 @@ Helper functions for the Consent application.
 
 from __future__ import absolute_import, unicode_literals
 
+from django.apps import apps
+
 from enterprise.utils import get_enterprise_customer
 
 

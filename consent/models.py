@@ -175,12 +175,6 @@ class ProxyDataSharingConsent(ConsentModelMixin):
         """
         return self.commit()
 
-    def save(self, *args, **kwargs):  # pylint: disable=unused-argument
-        """
-        Synonym function for ``commit``.
-        """
-        return self.commit()
-
 
 class Consent(TimeStampedModel):
     """

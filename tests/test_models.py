@@ -1039,25 +1039,6 @@ class TestProxyDataSharingConsent(TransactionTestCase):
         assert the_only_enterprise_customer == proxy_dsc.enterprise_customer
 
     @ddt.data(
-        {
-            'enterprise_customer__name': 'rich_enterprise',
-            'enterprise_customer__enable_data_sharing_consent': True,
-        },
-        {
-            'enterprise_customer__name': 'rich_enterprise',
-            'enterprise_customer__enable_data_sharing_consent': True,
-            'lets_see_if__this': 'is_ignored',
-        }
-    )
-    def test_create_new_proxy_with_composite_query(self, kwargs):
-        """
-        Test that we can use composite queries for enterprise customers.
-        """
-        proxy_dsc = ProxyDataSharingConsent(**kwargs)
-        the_only_enterprise_customer = EnterpriseCustomer.objects.all().first()  # pylint: disable=no-member
-        assert the_only_enterprise_customer == proxy_dsc.enterprise_customer
-
-    @ddt.data(
         str, repr
     )
     def test_string_conversion(self, method):
