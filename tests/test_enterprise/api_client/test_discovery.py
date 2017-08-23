@@ -424,23 +424,12 @@ class TestCourseCatalogApi(unittest.TestCase):
 
     @mock.patch('enterprise.api_client.discovery.course_discovery_api_client')
     @ddt.data(
-        (23, 'course-v1:org+course+basic_course', {'courses': {}}, False, True),
-        (45, 'course-v1:org+course+fancy_course', {'courses': {'course-v1:org+course+fancy_course': True}}, True, True),
-        (93, 'course-v1:org+course+my_course', {'courses': {'course-v1:org+course+my_course': False}}, False, True),
-        (23, 'basic_course', {'courses': {}}, False, False),
-        (45, 'fancy_course', {'courses': {'fancy_course': True}}, True, False),
-        (93, 'my_course', {'courses': {'my_course': False}}, False, False)
+        (23, 'course-id', {'courses': {}}, False),
+        (45, 'fancy-course', {'courses': {'fancy-course': True}}, True),
+        (93, 'my-course', {'courses': {'my-course': False}}, False)
     )
     @ddt.unpack
-    def test_is_course_in_catalog(
-            self,
-            catalog_id,
-            course_id,
-            api_resp,
-            expected,
-            is_run,
-            mock_discovery_client_factory
-    ):
+    def test_is_course_in_catalog(self, catalog_id, course_id, api_resp, expected, mock_discovery_client_factory):
         """
         Test the API client that checks to determine if a given course ID is present
         in the given catalog.
@@ -450,10 +439,7 @@ class TestCourseCatalogApi(unittest.TestCase):
         self.api = CourseCatalogApiClient(self.user_mock)
         assert self.api.is_course_in_catalog(catalog_id, course_id) == expected
         discovery_client.catalogs.assert_called_once_with(catalog_id)
-        if is_run:
-            discovery_client.catalogs.return_value.contains.get.assert_called_once_with(course_run_id=course_id)
-        else:
-            discovery_client.catalogs.return_value.contains.get.assert_called_once_with(course_id=course_id)
+        discovery_client.catalogs.return_value.contains.get.assert_called_once_with(course_run_id=course_id)
 
     @ddt.data(
         (None, []),

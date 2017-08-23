@@ -5,8 +5,6 @@ Utilities to get details from the course catalog API.
 from __future__ import absolute_import, unicode_literals
 
 from edx_rest_api_client.client import EdxRestApiClient
-from opaque_keys import InvalidKeyError
-from opaque_keys.edx.keys import CourseKey
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
@@ -354,31 +352,19 @@ class CourseCatalogApiClient(object):
 
         return available_course_modes
 
-    def is_course_in_catalog(self, catalog_id, course_id):
+    def is_course_in_catalog(self, catalog_id, course_run_id):
         """
-        Determine if the given course or course run ID is contained in the catalog with the given ID.
+        Determine if the given course run ID is contained in the catalog with the given ID.
 
         Args:
             catalog_id (int): The ID of the catalog
-            course_id (str): The ID of the course or course run
+            course_run_id (str): The ID of the course run
 
         Returns:
-            bool: Whether the course or course run is contained in the given catalog
+            bool: Whether the course run is contained in the given catalog
         """
-        try:
-            # Determine if we have a course run ID, rather than a plain course ID
-            course_run_id = str(CourseKey.from_string(course_id))
-        except InvalidKeyError:
-            course_run_id = None
-
-        endpoint = self.client.catalogs(catalog_id).contains
-
-        if course_run_id:
-            resp = endpoint.get(course_run_id=course_run_id)
-        else:
-            resp = endpoint.get(course_id=course_id)
-
-        return resp.get('courses', {}).get(course_id, False)
+        resp = self.client.catalogs(catalog_id).contains.get(course_run_id=course_run_id)
+        return resp.get('courses', {}).get(course_run_id, False)
 
     def _load_data(self, resource, default=DEFAULT_VALUE_SAFEGUARD, **kwargs):
         """

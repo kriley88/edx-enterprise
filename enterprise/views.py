@@ -699,7 +699,7 @@ class CourseEnrollmentView(View):
             user_id=request.user.id
         )
 
-        data_sharing_consent = DataSharingConsent.objects.proxied_get(
+        data_sharing_consent = DataSharingConsent.objects.get(
             username=enterprise_customer_user.username,
             course_id=course_id,
             enterprise_customer=enterprise_customer
@@ -822,7 +822,7 @@ class CourseEnrollmentView(View):
                 user_id=request.user.id
             )
 
-        data_sharing_consent = DataSharingConsent.objects.proxied_get(
+        data_sharing_consent = DataSharingConsent.objects.get(
             username=enterprise_customer_user.username,
             course_id=course_id,
             enterprise_customer=enterprise_customer

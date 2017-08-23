@@ -5,13 +5,11 @@ Models for edX Enterprise's Consent application.
 
 from __future__ import absolute_import, unicode_literals
 
-from consent.errors import InvalidProxyConsent
 from consent.mixins import ConsentModelMixin
-from opaque_keys import InvalidKeyError
-from opaque_keys.edx.keys import CourseKey
 from simple_history.models import HistoricalRecords
 
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, models
 from django.utils.translation import ugettext_lazy as _
 
 from model_utils.models import TimeStampedModel
@@ -28,35 +26,17 @@ class DataSharingConsentQuerySet(models.query.QuerySet):
     except is not saved in the database until committed.
     """
 
-    def proxied_get(self, *args, **kwargs):
+    def get(self, *args, **kwargs):
         """
         Perform the query and returns a single object matching the given keyword arguments.
 
         This customizes the queryset to return an instance of ``ProxyDataSharingConsent`` when
         the searched-for ``DataSharingConsent`` instance does not exist.
         """
-        original_kwargs = kwargs.copy()
-        if 'course_id' in kwargs:
-            try:
-                # Check if we have a course ID or a course run ID
-                course_run_key = CourseKey.from_string(kwargs['course_id'])
-            except InvalidKeyError:
-                # The ID we have is for a course instead of a course run; fall through
-                # to the second check.
-                pass
-            else:
-                try:
-                    # Try to get the record for the course run specifically
-                    return self.get(*args, **kwargs)
-                except DataSharingConsent.DoesNotExist:
-                    # A record for the course run didn't exist, so modify the query
-                    # parameters to look for just a course record on the second pass.
-                    kwargs['course_id'] = course_run_key.org + '+' + course_run_key.course
-
         try:
-            return self.get(*args, **kwargs)
+            return super(DataSharingConsentQuerySet, self).get(*args, **kwargs)
         except DataSharingConsent.DoesNotExist:
-            return ProxyDataSharingConsent(**original_kwargs)
+            return ProxyDataSharingConsent(**kwargs)
 
 
 class DataSharingConsentManager(models.Manager.from_queryset(DataSharingConsentQuerySet)):  # pylint: disable=no-member
@@ -85,17 +65,7 @@ class ProxyDataSharingConsent(ConsentModelMixin):
 
     objects = DataSharingConsentManager()
 
-    def __init__(
-            self,
-            enterprise_customer=None,
-            username='',
-            course_id='',
-            program_id='',
-            granted=False,
-            exists=False,
-            child_consents=None,
-            **kwargs
-    ):
+    def __init__(self, enterprise_customer=None, username='', course_id='', granted=False, **kwargs):
         """
         Initialize a proxy version of ``DataSharingConsent`` which behaves similarly but does not exist in the DB.
         """
@@ -111,37 +81,8 @@ class ProxyDataSharingConsent(ConsentModelMixin):
         self.enterprise_customer = enterprise_customer
         self.username = username
         self.course_id = course_id
-        self.program_id = program_id
         self.granted = granted
-        self.exists = exists
-        self._child_consents = child_consents or []
-
-    @classmethod
-    def from_children(cls, program_id, *children):
-        """
-        Build a ProxyDataSharingConsent using the details of the received consent records.
-        """
-        if not children:
-            return None
-        granted = all((child.granted for child in children))
-        exists = all((child.exists for child in children))
-        usernames = set([child.username for child in children])
-        enterprises = set([child.enterprise_customer for child in children])
-        if not len(usernames) == len(enterprises) == 1:
-            raise InvalidProxyConsent(
-                'Children used to create a bulk proxy consent object must '
-                'share a single common username and EnterpriseCustomer.'
-            )
-        username = children[0].username
-        enterprise_customer = children[0].enterprise_customer
-        return cls(
-            enterprise_customer=enterprise_customer,
-            username=username,
-            program_id=program_id,
-            exists=exists,
-            granted=granted,
-            child_consents=children
-        )
+        self.exists = False
 
     def commit(self):
         """
@@ -149,25 +90,17 @@ class ProxyDataSharingConsent(ConsentModelMixin):
 
         :return: A ``DataSharingConsent`` object if validation is successful, otherwise ``None``.
         """
-        if self._child_consents:
-            consents = []
-
-            for consent in self._child_consents:
-                consent.granted = self.granted
-                consents.append(consent.save() or consent)
-
-            return ProxyDataSharingConsent.from_children(self.program_id, *consents)
-
-        consent, _ = DataSharingConsent.objects.update_or_create(
-            enterprise_customer=self.enterprise_customer,
-            username=self.username,
-            course_id=self.course_id,
-            defaults={
-                'granted': self.granted
-            }
-        )
-        self.exists = consent.exists
-        return consent
+        try:
+            consent = DataSharingConsent.objects.create(
+                enterprise_customer=self.enterprise_customer,
+                username=self.username,
+                course_id=self.course_id,
+                granted=self.granted
+            )
+            self.exists = consent.exists
+            return consent
+        except (ValidationError, IntegrityError):
+            return None
 
     def save(self, *args, **kwargs):  # pylint: disable=unused-argument
         """
