@@ -1146,13 +1146,13 @@ class TestConsentAPIViews(APITest, ConsentMixin):
 
     @ddt.data(
         (
-            factories.EnterpriseCourseEnrollmentFactory,
+            factories.DataSharingConsentFactory,
             [{
+                'username': TEST_USERNAME,
                 'course_id': TEST_COURSE,
-                'enterprise_customer_user__user_id': TEST_USER_ID,
-                'enterprise_customer_user__enterprise_customer__uuid': TEST_UUID,
-                'enterprise_customer_user__enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
-                'consent_granted': False
+                'enterprise_customer__uuid': TEST_UUID,
+                'enterprise_customer__enforce_data_sharing_consent': 'at_enrollment',
+                'granted': False
             }],
             {
                 DSCView.REQUIRED_PARAM_USERNAME: TEST_USERNAME,

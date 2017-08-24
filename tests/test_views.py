@@ -398,17 +398,21 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
         assert response.status_code == 404
 
     @mock.patch('enterprise.views.render', side_effect=fake_render)
+    @mock.patch('enterprise.models.CourseCatalogApiServiceClient')
     @mock.patch('enterprise.views.configuration_helpers')
     @mock.patch('enterprise.views.CourseApiClient')
     def test_get_course_specific_consent_not_needed(
             self,
             course_api_client_mock,
             mock_config,
+            course_catalog_api_client_mock,
             *args
     ):  # pylint: disable=unused-argument
         self._login()
         course_id = 'course-v1:edX+DemoX+Demo_Course'
         mock_config.get_value.return_value = 'My Platform'
+        course_catalog_api_client = course_catalog_api_client_mock.return_value
+        course_catalog_api_client.is_course_in_catalog.return_value = False
         enterprise_customer = EnterpriseCustomerFactory(
             name='Starfleet Academy',
             enable_data_sharing_consent=True,

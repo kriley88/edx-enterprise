@@ -14,6 +14,26 @@ Change Log
 Unreleased
 ----------
 
+[0.41.0] - 2017-08-24
+---------------------
+
+* Migrate the codebase to the new `consent.models.DataSharingConsent` model for when dealing with consent.
+
+[0.40.7] - 2017-08-23
+---------------------
+
+* Fix bug causing 500 error on course enrollment page when the course does not have a course image configured.
+
+[0.40.6] - 2017-08-23
+---------------------
+
+* Update Consent API to use Discovery worker user for auth, rather than request user.
+
+[0.40.5] - 2017-08-23
+---------------------
+
+* Update SAP course export to use enterprise courses API.
+
 [0.40.4] - 2017-08-23
 ---------------------
 

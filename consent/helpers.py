@@ -6,6 +6,7 @@ Helper functions for the Consent application.
 from __future__ import absolute_import, unicode_literals
 
 from django.apps import apps
+from django.contrib.auth.models import User
 
 from enterprise.utils import get_enterprise_customer
 
@@ -19,6 +20,18 @@ def consent_exists(username, course_id, enterprise_customer_uuid):
     :param enterprise_customer_uuid: The consent requester.
     :return: Whether any consent (provided or unprovided) exists.
     """
+    # pylint: disable=invalid-name
+    EnterpriseCourseEnrollment = apps.get_model('enterprise', 'EnterpriseCourseEnrollment')
+    if EnterpriseCourseEnrollment.objects.filter(
+            course_id=course_id,
+            enterprise_customer_user__user_id=get_user_id(username),
+            enterprise_customer_user__enterprise_customer__uuid=enterprise_customer_uuid,
+    ).exists():
+        # We're not creating consent records when we do proxy enrollment, so check for
+        # whether a situation in which any record related to the overall consent scenario exists,
+        # even if a DataSharingConsent instance doesn't.
+        return True
+
     consent = get_data_sharing_consent(username, course_id, enterprise_customer_uuid)
     return consent.exists if consent else False
 
@@ -40,7 +53,6 @@ def consent_required(username, course_id, enterprise_customer_uuid):
     """
     Get whether consent is required by the ``EnterpriseCustomer``.
 
-    :param request_user: The user making the request related to consent.
     :param username: The user that grants consent.
     :param course_id: The course for which consent is granted.
     :param enterprise_customer_uuid: The consent requester.
@@ -54,6 +66,19 @@ def consent_required(username, course_id, enterprise_customer_uuid):
         (enterprise_customer.enforces_data_sharing_consent('at_enrollment')) and
         (enterprise_customer.catalog_contains_course_run(course_id))
     )
+
+
+def get_user_id(username):
+    """
+    Get the ID of the ``User`` associated with ``username``.
+
+    :param username: The username of the ``User`` from whom to get the ID.
+    :return: The ID of the user.
+    """
+    try:
+        return User.objects.get(username=username).pk
+    except User.DoesNotExist:
+        return None
 
 
 def get_data_sharing_consent(username, course_id, enterprise_customer_uuid):

@@ -217,11 +217,7 @@ class GrantDataSharingPermissions(View):
                     course_id=course_id
                 )
                 customer = enrollment.enterprise_customer_user.enterprise_customer
-                if not consent_required(
-                        enrollment.enterprise_customer_user.username,
-                        course_id,
-                        customer.uuid
-                ):
+                if not consent_required(enrollment.enterprise_customer_user.username, course_id, customer.uuid):
                     raise Http404
             except EnterpriseCourseEnrollment.DoesNotExist:
                 # Enrollment is not deferred, but we don't have
@@ -622,6 +618,9 @@ class CourseEnrollmentView(View):
                 effort_hours,
             ).format(hours=effort_hours)
 
+        # Parse course run image.
+        course_run_image = course_run['image'] or {}
+
         # Retrieve the enterprise-discounted price from ecommerce.
         course_modes = self.set_final_prices(course_modes, request)
         premium_modes = [mode for mode in course_modes if mode['premium']]
@@ -649,7 +648,7 @@ class CourseEnrollmentView(View):
             'course_short_description': course_run['short_description'] or '',
             'course_pacing': self.PACING_FORMAT.get(course_run['pacing_type'], ''),
             'course_start_date': course_start_date,
-            'course_image_uri': course_run['image']['src'],
+            'course_image_uri': course_run_image.get('src', ''),
             'enterprise_customer': enterprise_customer,
             'welcome_text': self.WELCOME_TEXT_FORMAT.format(platform_name=platform_name),
             'enterprise_welcome_text': self.ENT_WELCOME_TEXT_FORMAT.format(
@@ -731,11 +730,7 @@ class CourseEnrollmentView(View):
                 data_sharing_consent
             )
 
-        user_consent_needed = consent_required(
-            enterprise_customer_user.username,
-            course_id,
-            enterprise_customer.uuid
-        )
+        user_consent_needed = consent_required(enterprise_customer_user.username, course_id, enterprise_customer.uuid)
         if not selected_course_mode.get('premium') and not user_consent_needed:
             # For the audit course modes (audit, honor), where DSC is not
             # required, enroll the learner directly through enrollment API
