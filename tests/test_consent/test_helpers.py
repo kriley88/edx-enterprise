@@ -19,17 +19,25 @@ class ConsentHelpersTest(testcases.TestCase):
     Test cases for helper functions for the Consent application.
     """
 
-    def test_consent_exists_proxy_enrollment(self):
+    @ddt.data(
+        True, False
+    )
+    def test_consent_exists_proxy_enrollment(self, user_exists):
         """
         If we did proxy enrollment, we return ``True`` for the consent existence question.
         """
-        factories.UserFactory(id=1)
+        if user_exists:
+            factories.UserFactory(id=1)
         ece = factories.EnterpriseCourseEnrollmentFactory(enterprise_customer_user__user_id=1)
-        assert helpers.consent_exists(
+        consent_exists = helpers.consent_exists(
             ece.enterprise_customer_user.username,
             ece.course_id,
             ece.enterprise_customer_user.enterprise_customer.uuid,
         )
+        if user_exists:
+            assert consent_exists
+        else:
+            assert not consent_exists
 
     @ddt.data(
         (factories.UserFactory, [{'id': TEST_USER_ID, 'username': TEST_USERNAME}], True),

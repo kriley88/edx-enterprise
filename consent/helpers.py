@@ -27,8 +27,8 @@ def consent_exists(username, course_id, enterprise_customer_uuid):
             enterprise_customer_user__user_id=get_user_id(username),
             enterprise_customer_user__enterprise_customer__uuid=enterprise_customer_uuid,
     ).exists():
-        # We're not creating consent records when we do proxy enrollment, so
-        # check for an enrollment as an indicator that consent does actually exist,
+        # We're not creating consent records when we do proxy enrollment, so check for
+        # whether a situation in which any record related to the overall consent scenario exists,
         # even if a DataSharingConsent instance doesn't.
         return True
 
@@ -72,6 +72,7 @@ def consent_required(username, course_id, enterprise_customer_uuid):
 def get_user_id(username):
     """
     Get the ID of the ``User`` associated with ``username``.
+
     :param username: The username of the ``User`` from whom to get the ID.
     :return: The ID of the user.
     """
