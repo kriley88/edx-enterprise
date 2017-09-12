@@ -119,6 +119,7 @@ class TestEnterpriseUtils(unittest.TestCase):
                 "enterprise_enrollment_template",
                 "enterprise_customer_consent",
                 "sapsuccessfactorsenterprisecustomerconfiguration",
+                "enterprisecustomerreportingconfiguration",
                 "created",
                 "modified",
                 "uuid",

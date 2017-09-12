@@ -102,4 +102,4 @@ test-all: clean jshint quality jasmine
 validate: quality test ## run tests and quality checks
 
 isort: ## Call isort on packages/files that are checked in quality tests
-	isort --recursive tests test_utils enterprise consent manage.py setup.py test_settings.py
+	isort --recursive tests test_utils enterprise consent integrated_channels enterprise_reporting manage.py setup.py test_settings.py
