@@ -50,6 +50,7 @@ setup(
         "integrated_channels",
         "integrated_channels.integrated_channel",
         "integrated_channels.sap_success_factors",
+        "enterprise_reporting",
     ],
     include_package_data=True,
     install_requires=REQUIREMENTS,

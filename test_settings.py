@@ -40,6 +40,7 @@ INSTALLED_APPS = (
     "consent",
     "integrated_channels.integrated_channel",
     "integrated_channels.sap_success_factors",
+    "enterprise_reporting",
 )
 
 MIDDLEWARE_CLASSES = [
