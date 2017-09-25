@@ -21,8 +21,10 @@ from enterprise import models
 from enterprise.api.filters import EnterpriseCustomerUserFilterBackend, UserFilterBackend
 from enterprise.api.pagination import get_paginated_response
 from enterprise.api.throttles import ServiceUserThrottle
-from enterprise.api.v1 import decorators, serializers
+from enterprise.api.v1 import serializers
+from enterprise.api.v1.decorators import enterprise_customer_required, require_at_least_one_query_parameter
 from enterprise.api_client.discovery import CourseCatalogApiClient
+from six.moves.urllib.parse import quote_plus, unquote  # pylint: disable=import-error,ungrouped-imports
 
 LOGGER = getLogger(__name__)
 
@@ -96,8 +98,35 @@ class EnterpriseCustomerViewSet(EnterpriseReadOnlyModelViewSet):
     filter_fields = FIELDS
     ordering_fields = FIELDS
 
+    @method_decorator(require_at_least_one_query_parameter('course_run_ids', 'program_uuids'))
     @detail_route()
-    def courses(self, request, pk=None):  # pylint: disable=unused-argument,invalid-name
+    # pylint: disable=invalid-name,unused-argument
+    def contains_content(self, request, pk, course_run_ids, program_uuids):
+        """
+        Return whether or not the specified content is available to the EnterpriseCustomer.
+
+        Multiple course_run_ids and/or program_uuids query parameters can be sent to this view to check
+        for their existence in the EnterpriseCustomerCatalogs associated with this EnterpriseCustomer.
+        At least one course run key or program UUID value must be included in the request.
+        """
+        enterprise_customer = self.get_object()
+
+        # Maintain plus characters in course key.
+        course_run_ids = [unquote(quote_plus(course_run_id)) for course_run_id in course_run_ids]
+
+        contains_content = True
+        for catalog in enterprise_customer.enterprise_customer_catalogs.all():
+            if course_run_ids:
+                contains_content = catalog.contains_content('key', course_run_ids)
+            if program_uuids:
+                contains_content = contains_content and catalog.contains_content('uuid', program_uuids)
+            if contains_content:
+                break
+
+        return Response({'contains_content': contains_content})
+
+    @detail_route()
+    def courses(self, request, pk=None):  # pylint: disable=invalid-name,unused-argument
         """
         Retrieve the list of courses contained within the catalog linked to this enterprise.
 
@@ -256,6 +285,30 @@ class EnterpriseCustomerCatalogViewSet(EnterpriseReadOnlyModelViewSet):
             return serializers.EnterpriseCustomerCatalogDetailSerializer
         return serializers.EnterpriseCustomerCatalogSerializer
 
+    @method_decorator(require_at_least_one_query_parameter('course_run_ids', 'program_uuids'))
+    @detail_route()
+    # pylint: disable=invalid-name,unused-argument
+    def contains_content(self, request, pk, course_run_ids, program_uuids):
+        """
+        Return whether or not the EnterpriseCustomerCatalog contains the specified content.
+
+        Multiple course_run_ids and/or program_uuids query parameters can be sent to this view to check
+        for their existence in the EnterpriseCustomerCatalog. At least one course run key
+        or program UUID value must be included in the request.
+        """
+        enterprise_customer_catalog = self.get_object()
+
+        # Maintain plus characters in course key.
+        course_run_ids = [unquote(quote_plus(course_run_id)) for course_run_id in course_run_ids]
+
+        contains_content = True
+        if course_run_ids:
+            contains_content = enterprise_customer_catalog.contains_content('key', course_run_ids)
+        if program_uuids:
+            contains_content = contains_content and enterprise_customer_catalog.contains_content('uuid', program_uuids)
+
+        return Response({'contains_content': contains_content})
+
     @detail_route(url_path='course-runs/{}'.format(settings.COURSE_ID_PATTERN))
     def course_run_detail(self, request, pk, course_id):  # pylint: disable=invalid-name,unused-argument
         """
@@ -340,7 +393,7 @@ class EnterpriseCourseCatalogViewSet(EnterpriseWrapperApiViewSet):
         serializer = self.serializer_class(catalog)
         return Response(serializer.data)
 
-    @method_decorator(decorators.enterprise_customer_required)
+    @method_decorator(enterprise_customer_required)
     @detail_route()
     def courses(self, request, enterprise_customer, pk=None):  # pylint: disable=invalid-name
         """
