@@ -134,15 +134,14 @@ class EnterpriseCustomerManageLearnersView(View):
         search_keyword = self.get_search_keyword(request)
         linked_learners = self.get_enterprise_customer_user_queryset(search_keyword, customer_uuid)
         pending_linked_learners = self.get_pending_users_queryset(search_keyword, customer_uuid)
+        enrollment_url = '/api/enrollment/v1/'
 
         context = {
             self.ContextParameters.ENTERPRISE_CUSTOMER: enterprise_customer,
             self.ContextParameters.PENDING_LEARNERS: pending_linked_learners,
             self.ContextParameters.LEARNERS: linked_learners,
             self.ContextParameters.SEARCH_KEYWORD: search_keyword or '',
-            self.ContextParameters.ENROLLMENT_URL: getattr(settings,
-                                                           'ENTERPRISE_PUBLIC_ENROLLMENT_API_URL',
-                                                           settings.ENTERPRISE_ENROLLMENT_API_URL),
+            self.ContextParameters.ENROLLMENT_URL: enrollment_url,
         }
         context.update(admin.site.each_context(request))
         context.update(self._build_admin_context(request, enterprise_customer))
@@ -500,7 +499,7 @@ class EnterpriseCustomerManageLearnersView(View):
             course_id: The specific course the learners were enrolled in
             users: An iterable of the users or pending users who were enrolled
         """
-        course_details = CourseCatalogApiClient(request.user).get_course_run(course_id)
+        course_details = CourseCatalogApiClient(request.user, enterprise_customer.site).get_course_run(course_id)
         if not course_details:
             logging.warning(
                 _(
@@ -744,7 +743,10 @@ class EnterpriseCustomerManageLearnersView(View):
             django.http.response.HttpResponse: HttpResponse
         """
         context = self._build_context(request, customer_uuid)
-        manage_learners_form = ManageLearnersForm(user=request.user)
+        manage_learners_form = ManageLearnersForm(
+            user=request.user,
+            enterprise_customer=context[self.ContextParameters.ENTERPRISE_CUSTOMER]
+        )
         context.update({self.ContextParameters.MANAGE_LEARNERS_FORM: manage_learners_form})
 
         return render(request, self.template, context)
@@ -761,7 +763,12 @@ class EnterpriseCustomerManageLearnersView(View):
             django.http.response.HttpResponse: HttpResponse
         """
         enterprise_customer = EnterpriseCustomer.objects.get(uuid=customer_uuid)  # pylint: disable=no-member
-        manage_learners_form = ManageLearnersForm(request.POST, request.FILES, user=request.user)
+        manage_learners_form = ManageLearnersForm(
+            request.POST,
+            request.FILES,
+            user=request.user,
+            enterprise_customer=enterprise_customer
+        )
 
         # initial form validation - check that form data is well-formed
         if manage_learners_form.is_valid():

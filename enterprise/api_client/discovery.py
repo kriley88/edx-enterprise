@@ -16,7 +16,12 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from django.utils.translation import ugettext_lazy as _
 
-from enterprise.utils import MultipleProgramMatchError, NotConnectedToOpenEdX, get_course_id_from_course_run_id
+from enterprise.utils import (
+    MultipleProgramMatchError,
+    NotConnectedToOpenEdX,
+    get_configuration_value_for_site,
+    get_course_id_from_course_run_id,
+)
 
 try:
     from openedx.core.lib.token_utils import JwtBuilder
@@ -37,7 +42,7 @@ except ImportError:
 LOGGER = getLogger(__name__)
 
 
-def course_discovery_api_client(user):
+def course_discovery_api_client(user, catalog_url):
     """
     Return a Course Discovery API client setup with authentication for the specified user.
     """
@@ -50,7 +55,7 @@ def course_discovery_api_client(user):
     scopes = ['email', 'profile']
     expires_in = settings.OAUTH_ID_TOKEN_EXPIRATION
     jwt = JwtBuilder(user).build_token(scopes, expires_in)
-    return EdxRestApiClient(settings.COURSE_CATALOG_API_URL, jwt=jwt)
+    return EdxRestApiClient(catalog_url, jwt=jwt)
 
 
 class CourseCatalogApiClient(object):
@@ -68,7 +73,7 @@ class CourseCatalogApiClient(object):
 
     DEFAULT_VALUE_SAFEGUARD = object()
 
-    def __init__(self, user):
+    def __init__(self, user, enterprise_customer_site=None):
         """
         Create an Course Catalog API client setup with authentication for the specified user.
 
@@ -88,7 +93,13 @@ class CourseCatalogApiClient(object):
             )
 
         self.user = user
-        self.client = course_discovery_api_client(user)
+        catalog_url = get_configuration_value_for_site(
+            enterprise_customer_site,
+            'COURSE_CATALOG_API_URL',
+            settings.COURSE_CATALOG_API_URL
+        )
+        LOGGER.info('BF! catalog_url is %s', catalog_url)
+        self.client = course_discovery_api_client(user, catalog_url)
 
     def get_paginated_search_results(self, querystring=None):
         """
