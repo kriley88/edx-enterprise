@@ -9,7 +9,7 @@ from django.apps import AppConfig
 
 class EnterpriseReportingConfig(AppConfig):
     """
-    Configuration for the Enterprise Integrated Channel Django application.
+    Configuration for the Enterprise Reporting Django application.
     """
 
     name = 'enterprise_reporting'

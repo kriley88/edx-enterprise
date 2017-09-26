@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import migrations, models
-import django.utils.timezone
-import model_utils.fields
 import django.core.validators
+import django.utils.timezone
+from django.db import migrations, models
+
+import model_utils.fields
 
 
 class Migration(migrations.Migration):

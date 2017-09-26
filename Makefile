@@ -56,15 +56,16 @@ fake_translations: extract_translations dummy_translations compile_translations 
 upgrade: ## update the requirements/*.txt files with the latest packages satisfying requirements/*.in
 	pip install -q pip-tools
 	pip-compile --upgrade -o requirements/base.txt requirements/base.in
-	pip-compile --upgrade -o requirements/dev.txt requirements/base.in requirements/test-$(TARGET_PLATFORM).in requirements/dev.in requirements/quality.in
+	pip-compile --upgrade -o requirements/dev.txt requirements/base.in requirements/test-$(TARGET_PLATFORM).in requirements/dev.in requirements/quality.in requirements/reporting.in
 	pip-compile --upgrade -o requirements/doc.txt requirements/base.in requirements/test-$(TARGET_PLATFORM).in requirements/doc.in
-	pip-compile --upgrade -o requirements/quality.txt requirements/base.in requirements/test-$(TARGET_PLATFORM).in requirements/dev.in requirements/quality.in requirements/doc.in requirements/test.in
+	pip-compile --upgrade -o requirements/quality.txt requirements/base.in requirements/test-$(TARGET_PLATFORM).in requirements/dev.in requirements/quality.in requirements/doc.in requirements/test.in requirements/reporting.in
 	pip-compile --upgrade -o requirements/travis.txt requirements/travis.in
 	pip-compile --upgrade -o requirements/js_test.txt requirements/js_test.in
-	pip-compile --upgrade -o requirements/test.txt requirements/base.in requirements/test-$(TARGET_PLATFORM).in requirements/test.in
+	pip-compile --upgrade -o requirements/test.txt requirements/base.in requirements/test-$(TARGET_PLATFORM).in requirements/test.in requirements/reporting.in
+	pip-compile --upgrade -o requirements/reporting.txt requirements/base.in requirements/test-$(TARGET_PLATFORM).in requirements/test.in requirements/reporting.in
 
 	for platform in $(ALL_PLATFORMS) ; do \
-		pip-compile --upgrade -o requirements/test-$$platform.txt requirements/base.in requirements/test-$$platform.in requirements/test.in ; \
+		pip-compile --upgrade -o requirements/test-$$platform.txt requirements/base.in requirements/test-$$platform.in requirements/test.in requirements/reporting.in ; \
 	done
 
 pull_translations: ## pull translations from Transifex

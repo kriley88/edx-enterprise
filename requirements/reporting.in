@@ -1,0 +1,5 @@
+# Deviations:
+# vertica-python and pyminizip
+
+vertica-python==0.7.3                   # Required for Enterprise Reporting
+pyminizip==0.2.1                        # Required for Enterprise Reporting

@@ -29,7 +29,7 @@ class EnterpriseCustomerReportingConfigurationAdmin(admin.ModelAdmin):
     )
 
     list_filter = ("active",)
-    search_fields = ("enterprise_customer",)
+    search_fields = ("enterprise_customer__name", "email")
 
     class Meta(object):
         model = EnterpriseCustomerReportingConfiguration

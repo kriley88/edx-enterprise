@@ -4,6 +4,11 @@ Database models for Enterprise Reporting.
 """
 from __future__ import absolute_import, unicode_literals
 
+import datetime
+import logging
+
+import pytz
+
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -14,6 +19,8 @@ from django.utils.translation import ugettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from enterprise.models import EnterpriseCustomer
+
+LOGGER = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible
@@ -146,3 +153,27 @@ class EnterpriseCustomerReportingConfiguration(TimeStampedModel):
             self.day_of_week = None
         else:
             raise ValidationError(_('Frequency must be set to either daily, weekly, or monthly.'))
+
+    def is_current_time_in_schedule(self):
+        """
+        Determine if the current time is in the range specified by this configuration's schedule.
+        """
+        est_timezone = pytz.timezone('US/Eastern')
+        current_est_time = datetime.datetime.now(est_timezone)
+        current_hour_of_day = current_est_time.hour
+        current_day_of_week = current_est_time.weekday()
+        current_day_of_month = current_est_time.day
+
+        # All configurations have an hour of the day, so the hour must always match in order to send a report.
+        if self.hour_of_day == current_hour_of_day:
+            # If reports should be sent monthly and today is the same as the day configured, return True
+            if self.frequency == self.FREQUENCY_TYPE_MONTHLY and self.day_of_month == current_day_of_month:
+                return True
+            # If reports should be sent weekly and today is the same as the day configured, return True
+            elif self.frequency == self.FREQUENCY_TYPE_WEEKLY and self.day_of_week == current_day_of_week:
+                return True
+            # If reports should be sent daily, return True
+            elif self.frequency == self.FREQUENCY_TYPE_DAILY:
+                return True
+
+        return False
