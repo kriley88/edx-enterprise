@@ -268,7 +268,7 @@ class EnterpriseCustomerEntitlementViewSet(EnterpriseReadOnlyModelViewSet):
 
 class EnterpriseCustomerCatalogViewSet(EnterpriseReadOnlyModelViewSet):
     """
-    API Views for performing search through course discovery at the ``enterprise-catalogs`` API endpoint.
+    API Views for performing search through course discovery at the ``enterprise_catalogs`` API endpoint.
     """
     queryset = models.EnterpriseCustomerCatalog.objects.all()
 
@@ -309,7 +309,7 @@ class EnterpriseCustomerCatalogViewSet(EnterpriseReadOnlyModelViewSet):
 
         return Response({'contains_content': contains_content})
 
-    @detail_route(url_path='course-runs/{}'.format(settings.COURSE_ID_PATTERN))
+    @detail_route(url_path='course_runs/{}'.format(settings.COURSE_ID_PATTERN))
     def course_run_detail(self, request, pk, course_id):  # pylint: disable=invalid-name,unused-argument
         """
         Return the metadata for the specified course run.

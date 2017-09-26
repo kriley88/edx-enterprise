@@ -32,22 +32,22 @@ from test_utils import (
 CATALOGS_LIST_ENDPOINT = reverse('catalogs-list')
 CATALOGS_DETAIL_ENDPOINT = reverse('catalogs-detail', (1, ))
 CATALOGS_COURSES_ENDPOINT = reverse('catalogs-courses', (1, ))
-ENTERPRISE_CATALOGS_LIST_ENDPOINT = reverse('enterprise-catalogs-list')
+ENTERPRISE_CATALOGS_LIST_ENDPOINT = reverse('enterprise_catalogs-list')
 ENTERPRISE_CATALOGS_DETAIL_ENDPOINT = reverse(
-    'enterprise-catalogs-detail',
+    'enterprise_catalogs-detail',
     kwargs={'pk': FAKE_UUIDS[1]}
 )
 ENTERPRISE_CATALOGS_CONTAINS_CONTENT_ENDPOINT = reverse(
-    'enterprise-catalogs-contains-content',
+    'enterprise_catalogs-contains-content',
     kwargs={'pk': FAKE_UUIDS[1]}
 )
 ENTERPRISE_CATALOGS_COURSE_RUN_ENDPOINT = reverse(
     # pylint: disable=anomalous-backslash-in-string
-    'enterprise-catalogs-course-runs/(?P<course-id>[^/+]+(/|\+)[^/+]+(/|\+)[^/?]+)',
+    'enterprise_catalogs-course-runs/(?P<course-id>[^/+]+(/|\+)[^/+]+(/|\+)[^/?]+)',
     kwargs={'pk': FAKE_UUIDS[1], 'course_id': TEST_COURSE}
 )
 ENTERPRISE_CATALOGS_PROGRAM_ENDPOINT = reverse(
-    'enterprise-catalogs-programs/(?P<program-uuid>[^/]+)',
+    'enterprise_catalogs-programs/(?P<program-uuid>[^/]+)',
     kwargs={'pk': FAKE_UUIDS[1], 'program_uuid': FAKE_UUIDS[3]}
 )
 ENTERPRISE_COURSE_ENROLLMENT_LIST_ENDPOINT = reverse('enterprise-course-enrollment-list')
@@ -650,7 +650,7 @@ class TestEnterpriseAPIViews(APITest):
     @ddt.unpack
     def test_enterprise_customer_catalogs_list(self, is_staff, is_linked_to_enterprise):
         """
-        ``enterprise-catalogs``'s list endpoint should serialize the ``EnterpriseCustomerCatalog`` model.
+        ``enterprise_catalogs``'s list endpoint should serialize the ``EnterpriseCustomerCatalog`` model.
         """
         catalog_uuid = FAKE_UUIDS[1]
         catalog_title = 'All Content'
