@@ -13,9 +13,9 @@
     {% block styles %}
       {% stylesheet 'style-vendor' %}
       {% stylesheet 'style-main-v2' %}
-      <link rel="stylesheet" href="{% static 'css/vendor/font-awesome.css' %}"/>
+      <link rel="stylesheet" type="text/css" href="{% static 'css/vendor/font-awesome.css' %}"/>
       {# TODO: When we move to be a service, use the webpack loader's `render_bundle`. #}
-      <link rel="stylesheet" href="{% static 'enterprise/bundles/main.style.css' %}"/>
+      <link rel="stylesheet" type="text/css" href="{% static 'enterprise/bundles/main.style.css' %}"/>
     {% endblock %}
 
     {% block extrastyles %}{% endblock %}
@@ -42,6 +42,6 @@
 
     {% block contents %}{% endblock %}
 
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="{% static 'common/js/vendor/bootstrap.js' %}"></script>
   </body>
 </html>

@@ -2,9 +2,9 @@
 {% load i18n static admin_urls %}
 
 {% block extrastyle %}
-  <link rel="stylesheet" type="text/css" href="{% static 'admin/css/changelists.css' %}"/>
   {# TODO: When we move to be a service, use the webpack loader's `render_bundle`. #}
-  <link rel="stylesheet" href="{% static 'enterprise/bundles/main-admin.style.css' %}"/>
+  <link rel="stylesheet" type="text/css" href="{% static 'enterprise/bundles/main-admin.style.css' %}"/>
+  <link rel="stylesheet" type="text/css" href="{% static 'admin/css/changelists.css' %}"/>
 {% endblock %}
 
 {% block extrahead %}

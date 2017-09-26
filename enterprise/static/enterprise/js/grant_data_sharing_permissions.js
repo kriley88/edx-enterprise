@@ -43,6 +43,14 @@ function loadConsentPage() {
             $("#modal-close-button").focus();
         }
     });
+    $("#modal-close-button").keydown(function (event) {
+        if (event.keyCode === 9 && event.shiftKey) {
+            // Catch the tab keydown with shift event when leaving the first control in
+            // the modal, and move the focus to the last control in the modal.
+            event.preventDefault();
+            $("#review-policy-link").focus();
+        }
+    });
     var formDetails = {
         enrollmentDeferred: enrollmentDeferred,
         successUrl: successUrl,
