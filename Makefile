@@ -107,7 +107,7 @@ test: clean ## run tests in the current virtualenv
 diff_cover: test
 	diff-cover coverage.xml
 
-test-all: clean jshint ## run tests on every supported Python/Django combination
+test-all: clean jshint static ## run tests on every supported Python/Django combination
 	tox
 	tox -e quality
 	tox -e jasmine
@@ -118,5 +118,6 @@ validate: test ## run tests and quality checks
 isort: ## call isort on packages/files that are checked in quality tests
 	isort --recursive tests test_utils enterprise consent manage.py setup.py
 
-.PHONY: clean compile_translations coverage docs dummy_translations extract_translations \
-	fake_translations help pull_translations push_translations requirements test test-all upgrade validate isort
+.PHONY: clean clean.static compile_translations coverage docs dummy_translations extract_translations \
+	fake_translations help pull_translations push_translations requirements test test-all upgrade validate isort \
+	static static.dev static.watch
