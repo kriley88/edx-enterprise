@@ -23,14 +23,21 @@ button.close {
 
 .staff-container {
   .row {
+    display: flex;
     margin-bottom: 40px;
 
     img {
-      max-width: 100%;
+      max-width: 110px;
+      max-height: 110px;
+      padding-right: 30px;
     }
 
     h2 {
       font-weight: bold;
+    }
+
+    .col-7 {
+      flex-grow: 100;
     }
 
     &:last-child {

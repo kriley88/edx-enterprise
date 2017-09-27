@@ -99,9 +99,9 @@
             <div class="staff-container">
               {% for person in staff %}
                 <div class="row">
-                  <div class="col-3">
+                  {% if person.profile_image_url %}
                     <img src="{{ person.profile_image_url }}" alt="{{ person.given_name }} {{ person.family_name }}" />
-                  </div>
+                  {% endif %}
                   <div class="col-7">
                     <h2>{{ person.given_name }} {{ person.family_name }}</h2>
                     {% if person.position %}
