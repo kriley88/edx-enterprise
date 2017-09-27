@@ -109,6 +109,8 @@ class SAPSuccessFactorsEnterpriseCustomerConfiguration(EnterpriseCustomerPluginC
         Returns a LearnerDataTransmissionAudit initialized from the given enrollment and course completion data.
 
         If completed_date is None, then course completion has not been met.
+
+        If no remote ID can be found, return None.
         """
         # Have to create the audit model instance here to avoid a circular dependency.
         completed_timestamp = None
@@ -117,14 +119,17 @@ class SAPSuccessFactorsEnterpriseCustomerConfiguration(EnterpriseCustomerPluginC
             completed_timestamp = parse_datetime_to_epoch(completed_date)
             course_completed = is_passing
 
-        return LearnerDataTransmissionAudit(
-            enterprise_course_enrollment_id=enterprise_enrollment.id,
-            sapsf_user_id=enterprise_enrollment.enterprise_customer_user.get_remote_id(),
-            course_id=enterprise_enrollment.course_id,
-            course_completed=course_completed,
-            completed_timestamp=completed_timestamp,
-            grade=grade,
-        )
+        sapsf_user_id = enterprise_enrollment.enterprise_customer_user.get_remote_id()
+
+        if sapsf_user_id is not None:
+            return LearnerDataTransmissionAudit(
+                enterprise_course_enrollment_id=enterprise_enrollment.id,
+                sapsf_user_id=sapsf_user_id,
+                course_id=enterprise_enrollment.course_id,
+                course_completed=course_completed,
+                completed_timestamp=completed_timestamp,
+                grade=grade,
+            )
 
     def get_learner_data_exporter(self, user):
         """

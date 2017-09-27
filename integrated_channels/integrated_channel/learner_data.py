@@ -132,12 +132,14 @@ class BaseLearnerExporter(object):
             else:
                 completed_date, grade, is_passing = self._collect_grades_data(enterprise_enrollment, course_details)
 
-            yield self.get_learner_data_record(
+            record = self.get_learner_data_record(
                 enterprise_enrollment=enterprise_enrollment,
                 completed_date=completed_date,
                 grade=grade,
                 is_passing=is_passing,
             )
+            if record:
+                yield record
 
     def _collect_certificate_data(self, enterprise_enrollment):
         """
