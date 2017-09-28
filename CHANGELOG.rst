@@ -13,6 +13,12 @@ Change Log
 
 Unreleased
 ----------
+[0.48.2] - 2017-09-27
+---------------------
+
+* Added UTM parameters to marketing/enrollment URLs returned by Enterprise API.
+
+
 [0.48.1] - 2017-09-25
 ---------------------
 

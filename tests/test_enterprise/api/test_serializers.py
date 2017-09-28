@@ -267,6 +267,7 @@ class TestEnterpriseCatalogCoursesSerializer(TestImmutableStateSerializer):
                 course_runs=[course_run],
                 enterprise_customer=ec_identity_provider.enterprise_customer,
                 enterprise_context=enterprise_context,
+                enterprise_utm_context={}
             )
 
             assert len(updated_course_runs) == 1
