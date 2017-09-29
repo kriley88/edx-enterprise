@@ -143,7 +143,7 @@ class EnterpriseTemplateTagsTest(unittest.TestCase):
             [
                 '<button type="button" class="close" data-dismiss="modal" '
                 'aria-hidden="true" aria-label="close_modal_button_text">',
-                '<i class="fa fa-times-circle-o" aria-hidden="true"></i>',
+                '<i class="fa fa-times" aria-hidden="true"></i>',
                 '</button>',
                 '<img src="organization_logo" alt="organization_name" />',
                 '<span class="title">price_text</span>',

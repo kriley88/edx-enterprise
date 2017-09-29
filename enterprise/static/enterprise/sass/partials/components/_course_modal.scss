@@ -1,19 +1,6 @@
 /* Course Modal styling built atop of Bootstrap modals */
 
-button.close {
-  font-weight: 500;
-  background: none;
-  border: none;
-  color: $white;
-
-  i {
-    font-size: 1.5rem;
-  }
-
-  &:hover {
-    color: $gray-400;
-  }
-}
+@import 'modal';
 
 .header-wrapper {
   border-bottom: 1px groove black;
@@ -27,8 +14,8 @@ button.close {
     margin-bottom: 40px;
 
     img {
-      max-width: 110px;
-      max-height: 110px;
+      width: 110px;
+      height: 110px;
       padding-right: 30px;
     }
 
@@ -43,25 +30,6 @@ button.close {
     &:last-child {
       margin-bottom: 0;
     }
-  }
-}
-
-.modal {
-  width: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  box-shadow: none;
-  background: none;
-}
-
-.modal-header {
-  background-color: $blue;
-  padding: 5px;
-
-  h2.modal-header-text {
-    margin: 0;
-    font-weight: bold;
-    font-size: 18px;
   }
 }
 
