@@ -6,6 +6,7 @@ Database models for Enterprise Integrated Channel SAP SuccessFactors.
 from __future__ import absolute_import, unicode_literals
 
 import json
+from logging import getLogger
 from config_models.models import ConfigurationModel
 from simple_history.models import HistoricalRecords
 
@@ -20,6 +21,8 @@ from integrated_channels.integrated_channel.learner_data import BaseLearnerExpor
 
 from integrated_channels.sap_success_factors.transmitters.courses import SuccessFactorsCourseTransmitter
 from integrated_channels.sap_success_factors.transmitters.learner_data import SuccessFactorsLearnerDataTransmitter
+
+LOGGER = getLogger(__name__)
 
 
 @python_2_unicode_compatible
@@ -129,6 +132,11 @@ class SAPSuccessFactorsEnterpriseCustomerConfiguration(EnterpriseCustomerPluginC
                 course_completed=course_completed,
                 completed_timestamp=completed_timestamp,
                 grade=grade,
+            )
+        else:
+            LOGGER.debug(
+                'No learner data was sent for user "%s" because an SAP SuccessFactors user ID could not be found.',
+                enterprise_enrollment.enterprise_customer_user.username
             )
 
     def get_learner_data_exporter(self, user):
