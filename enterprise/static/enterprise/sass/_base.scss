@@ -157,8 +157,6 @@ body,
   }
 }
 
-/* Move button stuff into its own styles */
-
 .btn-confirm {
   background: $blue;
   border: none;
@@ -174,12 +172,6 @@ body,
     cursor: pointer;
     background: #0b5177;
   }
-}
-
-.data-consent-checkbox {
-  float: left;
-  margin-top: 4px;
-  margin-right: 10px;
 }
 
 /* Move into its own file. */
