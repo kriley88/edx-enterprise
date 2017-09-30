@@ -182,6 +182,14 @@ class GrantDataSharingPermissions(View):
         "opportunities from the world's best universities."
     )
 
+    def course_or_program_exist(self, course_id, program_uuid):
+        """
+        Return whether the input course or program exist.
+        """
+        course_exists = course_id and CourseApiClient().get_course_details(course_id)
+        program_exists = program_uuid and CourseCatalogApiServiceClient().program_exists(program_uuid)
+        return course_exists or program_exists
+
     def get_default_context(self, enterprise_customer, request):
         """
         Get the set of variables that will populate the template by default.
@@ -245,7 +253,7 @@ class GrantDataSharingPermissions(View):
               associated with the current user, but the corresponding EnterpriseCustomer
               does not require course-level consent for this course.
             * Enrollment is to be deferred, but either no EnterpriseCustomer was
-              supplied (via the enrollment_deferred GET parameter) or the supplied
+              supplied (via the defer_creation GET parameter) or the supplied
               EnterpriseCustomer doesn't exist.
         """
         if not CourseApiClient().get_course_details(course_id):
@@ -254,9 +262,9 @@ class GrantDataSharingPermissions(View):
         next_url = request.GET.get('next')
         failure_url = request.GET.get('failure_url')
 
-        enrollment_deferred = request.GET.get('enrollment_deferred')
+        defer_creation = request.GET.get('defer_creation')
         customer = None
-        if enrollment_deferred is None:
+        if defer_creation is None:
             # For non-deferred enrollments, check if we need to collect
             # consent and retrieve the EnterpriseCustomer using the existing
             # EnterpriseCourseEnrollment.
@@ -320,7 +328,7 @@ class GrantDataSharingPermissions(View):
             'redirect_url': next_url,
             'enterprise_customer_name': customer.name,
             'course_specific': True,
-            'enrollment_deferred': enrollment_deferred is not None,
+            'defer_creation': defer_creation is not None,
             'failure_url': failure_url,
             'requested_permissions': [
                 _('your enrollment in this course'),
@@ -349,13 +357,13 @@ class GrantDataSharingPermissions(View):
         enterprise_uuid = request.GET.get('enterprise_customer_uuid')
         success_url = request.GET.get('next')
         failure_url = request.GET.get('failure_url')
-        enrollment_deferred = request.GET.get('enrollment_deferred')
+        defer_creation = request.GET.get('defer_creation')
         username = request.user.username
 
         if not (enterprise_uuid and failure_url and success_url):
             raise Http404
 
-        if not CourseCatalogApiServiceClient.program_exists(program_uuid):
+        if not CourseCatalogApiServiceClient().program_exists(program_uuid):
             raise Http404
 
         consent_record = get_data_sharing_consent(username, enterprise_uuid, program_uuid=program_uuid)
@@ -403,7 +411,7 @@ class GrantDataSharingPermissions(View):
             'redirect_url': success_url,
             'enterprise_customer_name': customer.name,
             'program_specific': True,
-            'enrollment_deferred': enrollment_deferred is not None,
+            'defer_creation': defer_creation is not None,
             'failure_url': failure_url,
             'requested_permissions': [
                 _('your enrollment in this program'),
@@ -428,8 +436,6 @@ class GrantDataSharingPermissions(View):
         """
         Render a form to collect user input about data sharing consent.
         """
-        # Verify that all necessary resources are present
-        verify_edx_resources()
         course = request.GET.get('course_id', '')
         program = request.GET.get('program_uuid', '')
         if course:
@@ -439,85 +445,47 @@ class GrantDataSharingPermissions(View):
         raise Http404
 
     @method_decorator(login_required)
-    def post_course_specific_consent(self, request, course_id, consent_provided):
-        """
-        Interpret the course-specific form above and save it to an EnterpriseCourseEnrollment object.
-        """
-        if not CourseApiClient().get_course_details(course_id):
-            raise Http404
-
-        enrollment_deferred = request.POST.get('enrollment_deferred')
-        if enrollment_deferred is None:
-            enterprise_customer = get_enterprise_customer_for_user(request.user)
-            enterprise_customer_user, __ = EnterpriseCustomerUser.objects.get_or_create(
-                enterprise_customer=enterprise_customer,
-                user_id=request.user.id
-            )
-            EnterpriseCourseEnrollment.objects.update_or_create(
-                enterprise_customer_user=enterprise_customer_user,
-                course_id=course_id,
-            )
-            DataSharingConsent.objects.update_or_create(
-                username=request.user.username,
-                course_id=course_id,
-                enterprise_customer=enterprise_customer,
-                defaults={
-                    'granted': consent_provided
-                },
-            )
-
-        if not consent_provided:
-            failure_url = request.POST.get('failure_url') or reverse('dashboard')
-            return redirect(failure_url)
-
-        return redirect(request.POST.get('redirect_url', reverse('dashboard')))
-
-    @method_decorator(login_required)
-    def post_program_specific_consent(self, request, program_uuid, consent_provided):
-        """
-        Interpret the program-specific form above and save it to an EnterpriseCourseEnrollment object.
-        """
-        if not CourseCatalogApiServiceClient.program_exists(program_uuid):
-            raise Http404
-
-        enterprise_uuid = request.POST.get('enterprise_customer_uuid')
-        failure_url = request.POST.get('failure_url')
-        success_url = request.POST.get('redirect_url')
-        enrollment_deferred = request.POST.get('enrollment_deferred')
-        username = request.user.username
-
-        if not (enterprise_uuid and failure_url and success_url):
-            raise Http404
-
-        consent_record = get_data_sharing_consent(username, enterprise_uuid, program_uuid=program_uuid)
-
-        if consent_record is None:
-            raise Http404
-
-        if enrollment_deferred is None and consent_record.consent_required():
-            consent_record.granted = consent_provided
-            consent_record.save()
-
-        return redirect(success_url if consent_provided else failure_url)
-
     def post(self, request):
         """
         Process the above form.
         """
-        # Verify that all necessary resources are present
-        verify_edx_resources()
-
-        # If the checkbox is unchecked, no value will be sent
-        consent_provided = bool(request.POST.get('data_sharing_consent', False))
-        specific_course = request.POST.get('course_id', '')
-        specific_program = request.POST.get('program_uuid', '')
-
-        if specific_course:
-            return self.post_course_specific_consent(request, specific_course, consent_provided)
-        elif specific_program:
-            return self.post_program_specific_consent(request, specific_program, consent_provided)
-        else:
+        enterprise_uuid = request.POST.get('enterprise_customer_uuid')
+        failure_url = request.POST.get('failure_url')
+        success_url = request.POST.get('redirect_url')
+        if not (enterprise_uuid and failure_url and success_url):
             raise Http404
+
+        course_id = request.POST.get('course_id', '')
+        program_uuid = request.POST.get('program_uuid', '')
+        if not self.course_or_program_exist(course_id, program_uuid):
+            raise Http404
+
+        consent_record = get_data_sharing_consent(
+            request.user.username,
+            enterprise_uuid,
+            program_uuid=program_uuid,
+            course_id=course_id
+        )
+        if consent_record is None:
+            raise Http404
+
+        enterprise_customer = get_enterprise_customer_for_user(request.user)
+        defer_creation = request.POST.get('defer_creation')
+        consent_provided = bool(request.POST.get('data_sharing_consent', False))
+        if defer_creation is None and consent_record.consent_required():
+            if course_id:
+                enterprise_customer_user, __ = EnterpriseCustomerUser.objects.get_or_create(
+                    enterprise_customer=enterprise_customer,
+                    user_id=request.user.id
+                )
+                EnterpriseCourseEnrollment.objects.update_or_create(
+                    enterprise_customer_user=enterprise_customer_user,
+                    course_id=course_id,
+                )
+            consent_record.granted = consent_provided
+            consent_record.save()
+
+        return redirect(success_url if consent_provided else failure_url)
 
 
 class HandleConsentEnrollment(View):
@@ -540,8 +508,6 @@ class HandleConsentEnrollment(View):
         will be either redirected to LMS dashboard for audit modes or
         redirected to ecommerce basket flow for payment of premium modes.
         """
-        # Verify that all necessary resources are present
-        verify_edx_resources()
         enrollment_course_mode = request.GET.get('course_mode')
 
         # Redirect the learner to LMS dashboard in case no course mode is
@@ -908,9 +874,6 @@ class CourseEnrollmentView(NonAtomicView):
                 uuid `enterprise_uuid` in the request kwargs.
             * No course is found in database against the provided `course_id`.
         """
-        # Verify that all necessary resources are present
-        verify_edx_resources()
-
         enterprise_customer, course, course_run, modes = self.get_base_details(enterprise_uuid, course_id)
 
         # Create a link between the user and the enterprise customer if it does not already exist.  Ensure that the link
