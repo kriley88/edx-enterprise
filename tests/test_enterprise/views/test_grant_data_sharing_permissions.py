@@ -83,15 +83,14 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
     @mock.patch('enterprise.models.CourseCatalogApiServiceClient')
     @mock.patch('enterprise.views.CourseApiClient')
     @ddt.data(
-        (False, False, True),
-        (False, True, False),
-        (True, True, False),
+        (False, True),
+        (False, False),
+        (True, False),
     )
     @ddt.unpack
     def test_get_course_specific_consent(
             self,
             defer_creation,
-            supply_customer_uuid,
             existing_course_enrollment,
             course_api_client_mock,
             course_catalog_api_client_mock,
@@ -119,13 +118,13 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
                 course_id=course_id
             )
         params = {
+            'enterprise_customer_uuid': str(enterprise_customer.uuid),
             'course_id': 'course-v1:edX+DemoX+Demo_Course',
-            'next': 'https://google.com'
+            'next': 'https://google.com',
+            'failure_url': 'https://facebook.com',
         }
         if defer_creation:
             params['defer_creation'] = True
-        if supply_customer_uuid:
-            params['enterprise_id'] = str(enterprise_customer.uuid)
         response = self.client.get(self.url, data=params)
         assert response.status_code == 200
         expected_prompt = (
@@ -159,7 +158,6 @@ class TestGrantDataSharingPermissions(MessagesMixin, TestCase):
                 ),
                 "course_id": "course-v1:edX+DemoX+Demo_Course",
                 "redirect_url": "https://google.com",
-                "enterprise_customer_name": ecu.enterprise_customer.name,
                 "course_specific": True,
                 "defer_creation": defer_creation,
                 "welcome_text": "Welcome to Test platform.",
@@ -671,7 +669,6 @@ class TestProgramDataSharingPermissions(TestCase):
                 "program_uuid": params.get('program_uuid'),
                 "redirect_url": "https://google.com/",
                 "failure_url": "https://facebook.com/",
-                "enterprise_customer_name": enterprise_customer.name,
                 "program_specific": True,
                 "defer_creation": defer_creation,
                 "welcome_text": "Welcome to Test platform.",
